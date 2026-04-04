@@ -1,0 +1,16 @@
+
+---
+
+## requirements.txt
+
+```txt
+temporalio
+fastapi
+uvicorn
+requests
+python-dotenv
+tiktoken
+numpy
+scipy
+sqlite-utils
+anthropic

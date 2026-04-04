@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  temporal:
+    image: temporalio/auto-setup:latest
+    ports:
+      - "7233:7233"
+
+  temporal-ui:
+    image: temporalio/ui:latest
+    ports:
+      - "8080:8080"
+
+  worker:
+    build: .
+    command: python -m workers.main
+    depends_on:
+      - temporal
+    env_file:
+      - .env
+
+  voice-webhook:
+    build: .
+    command: uvicorn voice.webhook:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
