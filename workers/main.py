@@ -3,7 +3,13 @@ from temporalio.worker import Worker
 from temporalio.client import Client
 
 from workflows.borrower_workflow import BorrowerCollectionsWorkflow
-from workflows.activities import *
+from workflows.activities import (
+    run_assessment_agent,
+    summarize_chat,
+    run_voice_agent,
+    summarize_combined,
+    run_final_agent
+)
 
 async def main():
     client = await Client.connect("temporal:7233")
