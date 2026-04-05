@@ -8,7 +8,7 @@ import logging
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 from utils.llm import call_llm
-from utils.config import LLM_MODELS
+from utils.config import get_model
 from compliance.checker import check_message_compliance
 from agents.base_agent import BaseAgent
 
@@ -92,7 +92,7 @@ class FinalNoticeAgent(BaseAgent):
                 response = call_llm(
                     system=system_prompt,
                     messages=messages,
-                    model=LLM_MODELS["agent"],
+                    model=get_model("agent"),
                     max_tokens=200
                 )
                 
@@ -100,7 +100,7 @@ class FinalNoticeAgent(BaseAgent):
                     "turn_number": turns,
                     "borrower_last_message": user_msg,
                 }
-                is_compliant, violations = check_message_compliance(response, context)
+                is_compliant, violations = check_message_compliance(response, agent_name="final_notice", context=context)
                 for violation in violations:
                     borrower_context.add_compliance_violation(
                         violation["type"], violation["severity"], violation["reason"]

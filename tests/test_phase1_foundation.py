@@ -257,9 +257,9 @@ def test_config():
         assert len(COMPLIANCE_RULES) == 8, f"Expected 8 compliance rules, got {len(COMPLIANCE_RULES)}"
         print(f"✓ Compliance rules configured: {len(COMPLIANCE_RULES)} rules")
         
-        assert "agent" in LLM_MODELS
-        assert "evaluation" in LLM_MODELS
-        print(f"✓ LLM models configured: agent={LLM_MODELS['agent'][:30]}..., eval={LLM_MODELS['evaluation'][:30]}...")
+        assert get_model("agent")
+        assert get_model("evaluation")
+        print(f"✓ LLM models configured: agent={get_model('agent')[:30]}..., eval={get_model('evaluation')[:30]}...")
         
         return True
     except Exception as e:
@@ -306,3 +306,4 @@ def run_all_verification_tests():
 if __name__ == "__main__":
     success = run_all_verification_tests()
     sys.exit(0 if success else 1)
+lse 1)

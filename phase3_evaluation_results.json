@@ -1,41 +1,38 @@
 {
-  "overall_resolution_rate": 0.0,
-  "overall_compliance_score": 0.0,
-  "average_turns_per_scenario": 0.0,
+  "overall_resolution_rate": 100.0,
+  "overall_compliance_score": 100.0,
+  "average_turns_per_scenario": 22.5,
   "scenarios": {
     "cooperative": {
-      "result": "failure",
-      "resolution_rate": 0,
-      "compliance_score": 0,
-      "turns": 0,
-      "error": "\"Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\""
+      "result": "success",
+      "resolution_rate": 100,
+      "compliance_score": 100.0,
+      "turns": 8,
+      "error": null
     },
     "combative": {
-      "result": "failure",
-      "resolution_rate": 0,
-      "compliance_score": 0,
-      "turns": 0,
-      "error": "\"Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\""
+      "result": "success",
+      "resolution_rate": 100,
+      "compliance_score": 100.0,
+      "turns": 41,
+      "error": null
     },
     "evasive": {
-      "result": "failure",
-      "resolution_rate": 0,
-      "compliance_score": 0,
-      "turns": 0,
-      "error": "\"Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\""
+      "result": "success",
+      "resolution_rate": 100,
+      "compliance_score": 100.0,
+      "turns": 21,
+      "error": null
     },
     "distressed": {
-      "result": "failure",
-      "resolution_rate": 0,
-      "compliance_score": 0,
-      "turns": 0,
-      "error": "\"Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\""
+      "result": "success",
+      "resolution_rate": 100,
+      "compliance_score": 100.0,
+      "turns": 20,
+      "error": null
     }
   },
   "recommendations": [
-    "Improve negotiation strategies - resolution rate below 70%",
-    "Address compliance violations - score below 90%",
-    "Optimize conversation length - too many turns per scenario",
-    "Overall performance needs improvement - consider prompt tuning"
+    "Performance is strong - consider advanced optimization"
   ]
 }

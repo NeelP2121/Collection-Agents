@@ -1,0 +1,37 @@
+{
+  "total_spend_usd": 0.007575599999999999,
+  "total_input_tokens": 43295,
+  "total_output_tokens": 14116,
+  "breakdown_by_model": {
+    "gemma4": {
+      "tokens": 6472,
+      "cost": 0.0
+    },
+    "gemini-2.5-flash": {
+      "tokens": 84,
+      "cost": 0.0
+    },
+    "gemini-2.0-flash": {
+      "tokens": 48818,
+      "cost": 0.0075536
+    },
+    "claude-haiku-4-5-20251001": {
+      "tokens": 1817,
+      "cost": 0.0
+    }
+  },
+  "breakdown_by_category": {
+    "general": {
+      "tokens": 35074,
+      "cost": 0.004487800000000002
+    },
+    "meta_evaluation_introspection": {
+      "tokens": 2975,
+      "cost": 0.0006571999999999999
+    },
+    "synthetic_borrower": {
+      "tokens": 19142,
+      "cost": 0.0024085999999999995
+    }
+  }
+}

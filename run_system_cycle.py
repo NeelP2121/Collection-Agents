@@ -18,7 +18,7 @@ from typing import Dict, Any
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from models.borrower_state import BorrowerContext
-from self_learning.learning_loop import LearningLoop
+from learning.learning_loop import LearningLoop
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

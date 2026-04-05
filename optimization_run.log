@@ -1,0 +1,46 @@
+INFO:__main__:Starting Darwin-Godel Simulation Phase...
+INFO:learning.simulator:Running simulation for persona: Cooperative but completely bro...
+INFO:httpx:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 401 Unauthorized"
+ERROR:utils.llm:LLM call failed on anthropic: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZkmfzVR8PYn1nbNor8db'}
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/learning/run_optimization.py", line 75, in <module>
+    optimize_agent()
+    ~~~~~~~~~~~~~~^^
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/learning/run_optimization.py", line 17, in optimize_agent
+    results = run_parallel_simulations()
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/learning/simulator.py", line 56, in run_parallel_simulations
+    res = run_simulation(p)
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/learning/simulator.py", line 38, in run_simulation
+    result = agent.run_assessment_agent(context)
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/agents/agent1_assessment.py", line 53, in run_assessment_agent
+    response = call_llm(
+        system=self.system_prompt,
+    ...<2 lines>...
+        max_tokens=300
+    )
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/utils/llm.py", line 75, in call_llm
+    response = client.messages.create(
+        model=model,
+    ...<2 lines>...
+        messages=messages
+    )
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/venv/lib/python3.13/site-packages/anthropic/_utils/_utils.py", line 282, in wrapper
+    return func(*args, **kwargs)
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/venv/lib/python3.13/site-packages/anthropic/resources/messages/messages.py", line 996, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/v1/messages",
+        ^^^^^^^^^^^^^^^
+    ...<30 lines>...
+        stream_cls=Stream[RawMessageStreamEvent],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/venv/lib/python3.13/site-packages/anthropic/_base_client.py", line 1370, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/venv/lib/python3.13/site-packages/anthropic/_base_client.py", line 1143, in request
+    raise self._make_status_error_from_response(err.response) from None
+anthropic.AuthenticationError: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZkmfzVR8PYn1nbNor8db'}

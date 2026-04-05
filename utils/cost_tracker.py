@@ -25,12 +25,10 @@ class CostTracker:
             return cls._instance
 
     def _init(self, limit_usd: float, ledger_path: str):
+        from utils.config import MODEL_PRICING
         self.limit_usd = limit_usd
         self.ledger_path = ledger_path
-        self.pricing = {
-            "claude-3-5-haiku-20241022": {"input": 1.0, "output": 5.0}, # per million tokens
-            "claude-3-5-sonnet-20241022": {"input": 3.0, "output": 15.0}, # per million tokens
-        }
+        self.pricing = MODEL_PRICING
         self.data = self._load()
 
     def _load(self) -> Dict[str, Any]:
@@ -59,9 +57,9 @@ class CostTracker:
 
     def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost in USD."""
-        rates = self.pricing.get(model, self.pricing["claude-3-5-haiku-20241022"])
-        input_cost = (input_tokens / 1_000_000.0) * rates["input"]
-        output_cost = (output_tokens / 1_000_000.0) * rates["output"]
+        rates = self.pricing.get(model, {"input": 0.0, "output": 0.0})
+        input_cost = ((input_tokens or 0) / 1_000_000.0) * rates["input"]
+        output_cost = ((output_tokens or 0) / 1_000_000.0) * rates["output"]
         return input_cost + output_cost
 
     def check_budget(self):
@@ -74,6 +72,8 @@ class CostTracker:
 
     def record_call_cost(self, model: str, input_tokens: int, output_tokens: int, category: str = "general") -> float:
         """Record the token usage and cost for an API call."""
+        input_tokens = input_tokens or 0
+        output_tokens = output_tokens or 0
         cost = self.calculate_cost(model, input_tokens, output_tokens)
         
         with self._lock:

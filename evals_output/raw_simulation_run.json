@@ -1,0 +1,12 @@
+{
+  "baseline_composite_avg": 0.5933333333333334,
+  "simulations": [
+    {
+      "transcript": [
+        {
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "outcome": "failed_verification",
+      "context": 

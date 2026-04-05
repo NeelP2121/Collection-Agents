@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from typing import List, Dict
 from utils.llm import call_llm
-from utils.config import LLM_MODELS
+from utils.config import get_model
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ If NO, output exactly 'PASS'."""
     response = call_llm(
         system=system,
         messages=[{"role": "user", "content": transcript_texts[:10000]}],  # truncation safety
-        model=LLM_MODELS["godel"],
+        model=get_model("godel"),
         max_tokens=200
     )
     

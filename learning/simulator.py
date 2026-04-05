@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, List
 from utils.llm import call_llm
-from utils.config import LLM_MODELS
+from utils.config import get_model
 from agents.agent1_assessment import AssessmentAgent
 from models.borrower_state import BorrowerContext
 
@@ -20,7 +20,7 @@ class SyntheticBorrower:
         response = call_llm(
             system=system,
             messages=self.history,
-            model=LLM_MODELS["evaluation"],
+            model=get_model("evaluation"),
             max_tokens=150
         )
         
@@ -38,8 +38,7 @@ def run_simulation(persona: str, max_turns: int = 10) -> Dict:
     result = agent.run_assessment_agent(context)
     return {
         "transcript": context.agent1_messages,
-        "outcome": result["outcome"],
-        "context": context
+        "outcome": result["outcome"]
     }
 
 def run_parallel_simulations() -> List[Dict]:

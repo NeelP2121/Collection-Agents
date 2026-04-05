@@ -4,3 +4,5 @@ __pycache__/
 *.db
 data/*
 !data/.gitkeep
+*.md
+!README.mdsecrets/

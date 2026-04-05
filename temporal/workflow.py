@@ -22,7 +22,6 @@ class BorrowerWorkflow:
         """
         
         # Phase 1: Agent 1 - Chat Assessment
-        workflow.upsert_search_attributes({"PromptVersion": ["version_1"]})
         
         # Initialize borrower context
         borrower_context = BorrowerContext(
@@ -105,8 +104,7 @@ class BorrowerWorkflow:
         print(f"Starting Agent 3 final notice for {borrower_context.name}")
         agent3_result = await workflow.execute_activity(
             "run_final_notice_agent",
-            agent2_handoff,
-            borrower_context,
+            args=[agent2_handoff, borrower_context],
             start_to_close_timeout=timedelta(minutes=5)
         )
         

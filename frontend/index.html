@@ -51,20 +51,26 @@
             </div>
         </div>
         <h2>Incoming Secure Call</h2>
-        <p>Transferring to Resolution Voice Agent...</p>
-        
+        <p id="voice-status-text">Transferring to Resolution Voice Agent...</p>
+
         <div class="call-controls">
             <button class="btn-decline" id="btn-call-decline">Decline</button>
             <button class="btn-accept" id="btn-call-accept">Accept Transfer</button>
         </div>
-        
+
         <div class="call-active-state hidden" id="call-active-ui">
             <h3 class="timer">00:00</h3>
-            <p>Speak clearly. Negotiating resolution options.</p>
+            <p id="call-activity-label">Connecting...</p>
             <button class="btn-decline end-call" id="btn-call-end">End Call</button>
         </div>
     </div>
 
-    <script src="/static/app.js"></script>
+    <!-- VAPI Web SDK (ESM → window.Vapi) -->
+    <script type="module">
+        import Vapi from 'https://esm.sh/@vapi-ai/web';
+        window.Vapi = Vapi;
+        window.dispatchEvent(new Event('vapi-ready'));
+    </script>
+    <script src="/static/app.js?v=4"></script>
 </body>
 </html>

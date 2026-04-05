@@ -8,7 +8,7 @@ from agents.agent1_assessment import AssessmentAgent
 from agents.agent2_resolution import ResolutionAgent
 from agents.agent3_final_notice import FinalNoticeAgent
 from utils.llm import call_llm
-from utils.config import LLM_MODELS
+from utils.config import get_model, LLM_MODELS
 
 logger = logging.getLogger(__name__)
 

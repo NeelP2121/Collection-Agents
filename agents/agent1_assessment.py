@@ -7,7 +7,7 @@ import json
 import logging
 from typing import Dict, List, Optional
 from utils.llm import call_llm
-from utils.config import LLM_MODELS, SETTLEMENT_OFFER_RANGES
+from utils.config import get_model, SETTLEMENT_OFFER_RANGES
 from compliance.checker import check_message_compliance
 from agents.base_agent import BaseAgent
 
@@ -53,7 +53,7 @@ class AssessmentAgent(BaseAgent):
             response = call_llm(
                 system=self.system_prompt,
                 messages=messages,
-                model=LLM_MODELS["agent"],
+                model=get_model("agent"),
                 max_tokens=300
             )
             
@@ -62,7 +62,7 @@ class AssessmentAgent(BaseAgent):
                 "borrower_stop_requested": borrower_context.stop_contact_requested,
                 "borrower_last_message": messages[-1]["content"] if messages else ""
             }
-            is_compliant, violations = check_message_compliance(response, context)
+            is_compliant, violations = check_message_compliance(response, agent_name="assessment", context=context)
             for violation in violations:
                 borrower_context.add_compliance_violation(
                     violation["type"], violation["severity"], violation["reason"]
@@ -73,10 +73,20 @@ class AssessmentAgent(BaseAgent):
             
             messages.append({"role": "assistant", "content": response})
             
-            if hasattr(borrower_context, 'test_borrower_response_fn'):
+            if hasattr(borrower_context, 'test_borrower_response_fn') and borrower_context.test_borrower_response_fn:
                 user_msg = borrower_context.test_borrower_response_fn(turn, response, state)
             else:
-                user_msg = input(f"Borrower (turn {turn}): ").strip()
+                import sys
+                if sys.stdin.isatty():
+                    user_msg = input(f"Borrower (turn {turn}): ").strip()
+                else:
+                    # Provide a generic simulated response when running headlessly in Temporal Worker
+                    if turn == 1:
+                        user_msg = "Hello, yes this is John. My zip is 94102."
+                    elif turn == 2:
+                        user_msg = "I owe the $4200 but I lost my job recently."
+                    else:
+                        user_msg = "Please just don't call me anymore."
             
             if not user_msg:
                 break

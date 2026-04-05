@@ -1,6 +1,7 @@
 import requests
 import json
 import logging
+import os
 from typing import Dict, Any
 from utils.config import VAPI_API_KEY, VAPI_PHONE_ID
 
@@ -23,15 +24,25 @@ INSTRUCTIONS:
 2. NO RE-VERIFICATION: Do not re-ask for identity.
 3. NEGOTIATE SETTLEMENT AND LOCK IN DEAL.
 """
-        payload = {
-            "assistant": {
-                "model": {
-                    "provider": "anthropic",
-                    "model": "claude-3-5-haiku-20241022",
-                    "messages": [{"role": "system", "content": system_prompt}],
-                },
-                "firstMessage": "Hi, this is the resolution team calling."
+        assistant_config = {
+            "model": {
+                "provider": "google",
+                "model": "gemini-2.0-flash",
+                "messages": [{"role": "system", "content": system_prompt}],
             },
+            "firstMessage": "Hi, this is the resolution team calling."
+        }
+        
+        # Inject Server URL dynamically so ngrok can catch webhooks without dashboard config
+        server_url = os.getenv("SERVER_URL")
+        if server_url:
+            # Ensure it points exactly to our webhook route
+            if not server_url.endswith("/vapi-webhook"):
+                server_url = f"{server_url.rstrip('/')}/vapi-webhook"
+            assistant_config["serverUrl"] = server_url
+
+        payload = {
+            "assistant": assistant_config,
             "phoneNumberId": VAPI_PHONE_ID,
             "customer": {"number": phone},
             "metadata": {

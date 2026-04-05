@@ -8,7 +8,7 @@ import json
 import logging
 from typing import Dict, List, Optional
 from utils.llm import call_llm
-from utils.config import LLM_MODELS, SETTLEMENT_OFFER_RANGES
+from utils.config import get_model, SETTLEMENT_OFFER_RANGES
 from compliance.checker import check_message_compliance
 from agents.base_agent import BaseAgent
 
@@ -71,7 +71,7 @@ class ResolutionAgent(BaseAgent):
             response = call_llm(
                 system=system_prompt,
                 messages=messages,
-                model=LLM_MODELS["agent"],
+                model=get_model("agent"),
                 max_tokens=250
             )
             
@@ -81,7 +81,7 @@ class ResolutionAgent(BaseAgent):
                 "settlement_offer": settlement_options[current_option_index] if current_option_index < len(settlement_options) else None,
                 "policy_ranges": SETTLEMENT_OFFER_RANGES,
             }
-            is_compliant, violations = check_message_compliance(response, context)
+            is_compliant, violations = check_message_compliance(response, agent_name="resolution", context=context)
             for violation in violations:
                 borrower_context.add_compliance_violation(
                     violation["type"], violation["severity"], violation["reason"]

@@ -1,0 +1,68 @@
+INFO:__main__:Starting Darwin-Godel Simulation Phase...
+INFO:learning.simulator:Running simulation for persona: Cooperative but completely bro...
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash:generateContent "HTTP/1.1 404 Not Found"
+ERROR:utils.llm:LLM call failed on gemini: 404 NOT_FOUND. {'error': {'code': 404, 'message': 'models/gemini-3.1-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.', 'status': 'NOT_FOUND'}}
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/learning/run_optimization.py", line 75, in <module>
+    optimize_agent()
+    ~~~~~~~~~~~~~~^^
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/learning/run_optimization.py", line 17, in optimize_agent
+    results = run_parallel_simulations()
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/learning/simulator.py", line 56, in run_parallel_simulations
+    res = run_simulation(p)
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/learning/simulator.py", line 38, in run_simulation
+    result = agent.run_assessment_agent(context)
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/agents/agent1_assessment.py", line 53, in run_assessment_agent
+    response = call_llm(
+        system=self.system_prompt,
+    ...<2 lines>...
+        max_tokens=300
+    )
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/utils/llm.py", line 101, in call_llm
+    response = client.models.generate_content(
+        model=model,
+    ...<4 lines>...
+        }
+    )
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/venv/lib/python3.13/site-packages/google/genai/models.py", line 6021, in generate_content
+    response = self._generate_content(
+        model=model, contents=contents, config=parsed_config
+    )
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/venv/lib/python3.13/site-packages/google/genai/models.py", line 4683, in _generate_content
+    response = self._api_client.request(
+        'post', path, request_dict, http_options
+    )
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/venv/lib/python3.13/site-packages/google/genai/_api_client.py", line 1532, in request
+    response = self._request(http_request, http_options, stream=False)
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/venv/lib/python3.13/site-packages/google/genai/_api_client.py", line 1327, in _request
+    return self._retry(self._request_once, http_request, stream)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/venv/lib/python3.13/site-packages/tenacity/__init__.py", line 470, in __call__
+    do = self.iter(retry_state=retry_state)
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/venv/lib/python3.13/site-packages/tenacity/__init__.py", line 371, in iter
+    result = action(retry_state)
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/venv/lib/python3.13/site-packages/tenacity/__init__.py", line 413, in exc_check
+    raise retry_exc.reraise()
+          ~~~~~~~~~~~~~~~~~^^
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/venv/lib/python3.13/site-packages/tenacity/__init__.py", line 184, in reraise
+    raise self.last_attempt.result()
+          ~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/venv/lib/python3.13/site-packages/tenacity/__init__.py", line 473, in __call__
+    result = fn(*args, **kwargs)
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/venv/lib/python3.13/site-packages/google/genai/_api_client.py", line 1304, in _request_once
+    errors.APIError.raise_for_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/venv/lib/python3.13/site-packages/google/genai/errors.py", line 155, in raise_for_response
+    cls.raise_error(response.status_code, response_json, response)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/neelabh/PersonalProjects/CollectionAgents/venv/lib/python3.13/site-packages/google/genai/errors.py", line 184, in raise_error
+    raise ClientError(status_code, response_json, response)
+google.genai.errors.ClientError: 404 NOT_FOUND. {'error': {'code': 404, 'message': 'models/gemini-3.1-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.', 'status': 'NOT_FOUND'}}

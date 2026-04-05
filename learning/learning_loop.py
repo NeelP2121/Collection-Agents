@@ -9,12 +9,10 @@ import uuid
 from datetime import datetime
 from typing import Dict, Any, Optional
 from models.learning_state import LearningState, EvaluationRound
-from self_learning.prompt_improver import PromptImprover
-from self_learning.meta_evaluator import MetaEvaluator
-from self_learning.feedback_aggregator import FeedbackAggregator
-from agents.agent1_assessment import run_assessment_agent
-from agents.agent2_resolution import run_resolution_agent
-from agents.agent3_final_notice import run_final_notice_agent
+from learning.prompt_improver import PromptImprover
+from learning.meta_evaluator import MetaEvaluator
+from learning.feedback_aggregator import FeedbackAggregator
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

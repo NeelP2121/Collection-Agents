@@ -1,5 +1,8 @@
 const sessionId = Math.random().toString(36).substring(2, 15);
-let currentPhase = 1; 
+let currentPhase = 1;
+let vapiInstance = null;
+let vapiConfigured = false;
+let callInterval = null;
 
 const chatInput = document.getElementById('chat-input');
 const sendBtn = document.getElementById('send-button');
@@ -104,44 +107,147 @@ function triggerVoiceHandoff() {
     }, 1500);
 }
 
-btnDecline.addEventListener('click', invokeCallEndSim);
+const voiceStatusText = document.getElementById('voice-status-text');
+const callActivityLabel = document.getElementById('call-activity-label');
 
-btnAccept.addEventListener('click', () => {
+btnDecline.addEventListener('click', () => {
+    stopVapiCall();
+    invokeCallEndSim();
+});
+
+btnAccept.addEventListener('click', async () => {
+    // Unlock browser AudioContext immediately inside the user gesture
+    // so VAPI's WebRTC audio output is allowed to play
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) { const ctx = new AudioCtx(); await ctx.resume(); }
+    } catch (_) {}
+
     callControls.classList.add('hidden');
     callActiveUI.classList.remove('hidden');
-    
+    startCallTimer();
+    await startVapiCall();
+});
+
+btnEnd.addEventListener('click', () => {
+    stopVapiCall();
+    invokeCallEndSim();
+});
+
+// --- Timer helpers ---
+function startCallTimer() {
     let seconds = 0;
     const timer = document.querySelector('.timer');
-    window.callInterval = setInterval(() => {
+    callInterval = setInterval(() => {
         seconds++;
         const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
         const secs = (seconds % 60).toString().padStart(2, '0');
         timer.innerText = `${mins}:${secs}`;
     }, 1000);
-});
+}
 
-btnEnd.addEventListener('click', () => {
-    clearInterval(window.callInterval);
-    invokeCallEndSim();
-});
+// Wait for the ESM module to set window.Vapi (fires 'vapi-ready' event)
+function waitForVapiSDK(timeoutMs = 8000) {
+    if (typeof window.Vapi === 'function') return Promise.resolve(true);
+    return new Promise((resolve) => {
+        const onReady = () => { window.removeEventListener('vapi-ready', onReady); resolve(true); };
+        window.addEventListener('vapi-ready', onReady);
+        setTimeout(() => { window.removeEventListener('vapi-ready', onReady); resolve(false); }, timeoutMs);
+    });
+}
+
+// --- VAPI web call ---
+async function startVapiCall() {
+    try {
+        const [configRes, sdkReady] = await Promise.all([
+            fetch(`/api/vapi-config?session_id=${sessionId}`),
+            waitForVapiSDK()
+        ]);
+        const config = await configRes.json();
+
+        if (!config.configured || !config.public_key) {
+            if (callActivityLabel) callActivityLabel.innerText = 'VAPI key not configured — demo mode.';
+            console.warn('[VAPI] public key not set on server — running demo mode');
+            setTimeout(() => invokeCallEndSim(), 5000);
+            return;
+        }
+
+        if (!sdkReady || typeof window.Vapi !== 'function') {
+            if (callActivityLabel) callActivityLabel.innerText = 'VAPI SDK failed to load — check network.';
+            console.error('[VAPI] window.Vapi is not available after waiting');
+            setTimeout(() => invokeCallEndSim(), 3000);
+            return;
+        }
+
+        if (callActivityLabel) callActivityLabel.innerText = 'Requesting microphone...';
+        vapiConfigured = true;
+        vapiInstance = new window.Vapi(config.public_key);
+        console.log('[VAPI] initialised with public key', config.public_key.slice(0, 8) + '...');
+
+        vapiInstance.on('call-start', () => {
+            if (callActivityLabel) callActivityLabel.innerText = 'Connected. Speak clearly.';
+        });
+
+        vapiInstance.on('speech-start', () => {
+            if (callActivityLabel) callActivityLabel.innerText = 'Agent speaking...';
+        });
+
+        vapiInstance.on('speech-end', () => {
+            if (callActivityLabel) callActivityLabel.innerText = 'Your turn to speak.';
+        });
+
+        vapiInstance.on('call-end', () => {
+            clearInterval(callInterval);
+            invokeCallEndSim();
+        });
+
+        vapiInstance.on('error', (err) => {
+            console.error('VAPI error:', err);
+            if (callActivityLabel) callActivityLabel.innerText = 'Call error — ending session.';
+            clearInterval(callInterval);
+            setTimeout(() => invokeCallEndSim(), 2000);
+        });
+
+        if (callActivityLabel) callActivityLabel.innerText = 'Connecting to VAPI...';
+        // Prefer a pre-built assistant ID (more reliable); fall back to inline config
+        const startArg = config.assistant_id || config.assistant;
+        console.log('[VAPI] calling start() with', config.assistant_id ? `assistant_id: ${config.assistant_id}` : 'inline config', config.assistant);
+        const timeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('VAPI connection timed out after 15s')), 15000)
+        );
+        await Promise.race([vapiInstance.start(startArg), timeout]);
+        console.log('[VAPI] start() resolved');
+
+    } catch (err) {
+        console.error('[VAPI] Failed to start call:', err);
+        if (callActivityLabel) callActivityLabel.innerText = 'Could not connect — ending session.';
+        clearInterval(callInterval);
+        setTimeout(() => invokeCallEndSim(), 2000);
+    }
+}
+
+function stopVapiCall() {
+    clearInterval(callInterval);
+    if (vapiInstance && vapiConfigured) {
+        try { vapiInstance.stop(); } catch (_) {}
+    }
+}
 
 async function invokeCallEndSim() {
     voiceUI.classList.add('hidden');
     chatUI.style.filter = "none";
     chatUI.style.opacity = "1";
-    
-    appendSystemMessage("Voice Call Ended."); 
+
+    appendSystemMessage("Voice Call Ended.");
     appendSystemMessage("Agent 3 (Final Notice) is joining the chat...");
     showTyping();
 
-    // Notify backend
     await fetch('/api/simulate-call-end', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ session_id: sessionId, message: "", phase: 2 })
     });
 
-    // Wait and trigger agent 3 response organically
     setTimeout(() => {
         sendBackendInitAgent3();
     }, 2000);

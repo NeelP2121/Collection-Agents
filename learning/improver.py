@@ -2,7 +2,7 @@ import logging
 import yaml
 from pathlib import Path
 from utils.llm import call_llm
-from utils.config import LLM_MODELS
+from utils.config import get_model
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ Make exactly ONE surgical change to fix the biggest failure reason. Do not rewri
     response = call_llm(
         system=system,
         messages=[{"role": "user", "content": content}],
-        model=LLM_MODELS["improver"],
+        model=get_model("improver"),
         max_tokens=1000
     )
     

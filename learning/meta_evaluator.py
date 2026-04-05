@@ -35,7 +35,7 @@ class MetaEvaluator:
         import json
         import re
         from utils.llm import call_llm
-        from utils.config import LLM_MODELS
+        from utils.config import get_model
         
         system_prompt = f"""You are the Meta-Evaluator (Darwin Godel Machine) for an AI debt collector system.
 Your job is to introspect the current evaluation metric weights and suggest adjustments if the metrics are flawed, misleading, or have blind spots.
@@ -60,7 +60,7 @@ INSTRUCTIONS:
             response_text = call_llm(
                 system=system_prompt,
                 messages=[{"role": "user", "content": "Analyze the evaluation framework flaws and propose updated weights in JSON format."}],
-                model=LLM_MODELS.get("evaluation", "claude-3-5-haiku-20241022"),
+                model=get_model("evaluation"),
                 max_tokens=400,
                 context_category="meta_evaluation_introspection"
             )

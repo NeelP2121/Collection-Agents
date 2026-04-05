@@ -41,8 +41,8 @@ class BorrowerContext:
     # Workflow metadata
     workflow_id: Optional[str] = None
     current_stage: str = "assessment"  # "assessment", "resolution", "final_notice"
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: str = field(default_factory=str)
+    updated_at: str = field(default_factory=str)
     
     # Compliance tracking
     compliance_violations: List[Dict[str, Any]] = field(default_factory=list)
@@ -58,17 +58,17 @@ class BorrowerContext:
     def mark_identity_verified(self):
         """Mark identity as verified"""
         self.identity_verified = True
-        self.updated_at = datetime.utcnow()
+        self.updated_at = "now"
     
     def mark_hardship(self):
         """Mark borrower as in hardship"""
         self.hardship_detected = True
-        self.updated_at = datetime.utcnow()
+        self.updated_at = "now"
     
     def mark_stop_contact(self):
         """Mark that borrower requested no further contact"""
         self.stop_contact_requested = True
-        self.updated_at = datetime.utcnow()
+        self.updated_at = "now"
     
     def add_compliance_violation(self, violation_type: str, severity: str, message: str):
         """Log a compliance violation"""
@@ -76,14 +76,14 @@ class BorrowerContext:
             "type": violation_type,
             "severity": severity,
             "message": message,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": "now"
         })
-        self.updated_at = datetime.utcnow()
+        self.updated_at = "now"
     
     def advance_stage(self, new_stage: str):
         """Move to next workflow stage"""
         self.current_stage = new_stage
-        self.updated_at = datetime.utcnow()
+        self.updated_at = "now"
     
     def update_from_handoff(self, handoff_summary: Dict[str, Any]):
         """Update borrower context from agent handoff summary"""
@@ -117,4 +117,4 @@ class BorrowerContext:
             # Store any special communication needs
             pass
             
-        self.updated_at = datetime.utcnow()
+        self.updated_at = "now"

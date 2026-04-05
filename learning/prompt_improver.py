@@ -9,7 +9,7 @@ import uuid
 from typing import Dict, List, Any
 from datetime import datetime
 from utils.llm import call_llm
-from utils.config import LLM_MODELS
+from utils.config import get_model
 from models.learning_state import PromptVariant, LearningInsight
 
 logging.basicConfig(level=logging.INFO)
@@ -29,7 +29,7 @@ Provide 5 specific, actionable prompt improvements, ranked by estimated impact.
 
 class PromptImprover:
     def __init__(self):
-        self.model = LLM_MODELS["evaluation"]  # Use cheaper model for analysis
+        self.model = get_model("evaluation")  # Use cheaper model for analysis
         
     def analyze_failures(self, evaluation_results: Dict[str, Any], agent_name: str, current_prompt: str) -> List[LearningInsight]:
         """

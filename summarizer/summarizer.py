@@ -1,7 +1,7 @@
 import json
 from utils.llm import call_llm
 from summarizer.token_counter import TokenCounter, enforce_handoff_budget
-from utils.config import LLM_MODELS
+from utils.config import get_model
 
 class Summarizer:
     def __init__(self):
@@ -60,7 +60,7 @@ class Summarizer:
         response = call_llm(
             system=system_prompt,
             messages=[{"role": "user", "content": full_input}],
-            model=LLM_MODELS["evaluation"]  # Use Haiku for summarization
+            model=get_model("evaluation")  # Use Haiku for summarization
         )
         
         # Enforce token budget
@@ -136,7 +136,7 @@ class Summarizer:
         response = call_llm(
             system=system_prompt,
             messages=[{"role": "user", "content": context_info}],
-            model=LLM_MODELS["evaluation"]  # Use Haiku for summarization
+            model=get_model("evaluation")  # Use Haiku for summarization
         )
         
         # Enforce token budget

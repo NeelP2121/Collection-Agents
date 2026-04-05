@@ -8,8 +8,8 @@ numpy
 scipy
 sqlite-utils
 anthropic
+openai
+google-genai
 sqlalchemy
 pydantic
-tiktoken
 pyyaml
-openai

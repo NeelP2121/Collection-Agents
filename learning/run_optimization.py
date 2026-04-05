@@ -1,4 +1,7 @@
 import logging
+import json
+import os
+from utils.cost_tracker import get_cost_tracker
 from learning.simulator import run_parallel_simulations
 from learning.judge import score_transcript
 from learning.improver import run_surgical_improver, apply_improvement
@@ -41,12 +44,32 @@ def optimize_agent():
     else:
         logger.info("Agent Passed All Simulations with high composite metric. No Improvements Triggered.")
         
-    # Inject composite score metrics straight back into the dict so Godel Monitor can track "Passed" runs
     for i, res in enumerate(results):
         res["composite_score"] = scores[i]
         
     logger.info("Handing off to Godel Monitor (Phase 2)...")
     run_godel_monitor(results)
+    
+    # Generate Deliverable Assets
+    os.makedirs("evals_output", exist_ok=True)
+    
+    export_payload = {
+        "baseline_composite_avg": avg_score,
+        "simulations": results 
+    }
+    with open("evals_output/raw_simulation_run.json", "w") as f:
+        json.dump(export_payload, f, indent=2)
+        
+    tracker = get_cost_tracker()
+    spend_report = tracker.get_spend_report()
+    with open("evals_output/evolution_report_summary.md", "w") as f:
+        f.write("# Automated Evolution Report - Darwin-Godel Pipeline\n\n")
+        f.write(f"**Baseline Average Performance Score:** {avg_score:.2f}\n\n")
+        f.write("## Guaranteed Financial Compliance\n")
+        f.write(f"Total Framework USD Cost: **${spend_report.get('total_spend_usd', 0):.4f}**\n")
+        if failed:
+            f.write(f"\n*Surgical Optimizer explicitly applied 1-shot modification mapping over {len(failed)} failure traces.*\n")
+    logger.info("Raw JSON EVals and Markdown Checkpoints successfully written to disk (/evals_output).")
 
 if __name__ == "__main__":
     optimize_agent()

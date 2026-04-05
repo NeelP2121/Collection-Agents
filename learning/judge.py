@@ -2,7 +2,7 @@ import logging
 import re
 from typing import Dict, List
 from utils.llm import call_llm
-from utils.config import LLM_MODELS
+from utils.config import get_model
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ Return PURE JSON only: {"goal_score": 0.8, "reasoning": "..."}"""
     response = call_llm(
         system=system,
         messages=[{"role": "user", "content": transcript_text}],
-        model=LLM_MODELS["evaluation"],
+        model=get_model("evaluation"),
         max_tokens=200
     )
     

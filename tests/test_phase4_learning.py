@@ -12,9 +12,9 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from models.borrower_state import BorrowerContext
-from self_learning.learning_loop import LearningLoop
-from self_learning.feedback_aggregator import FeedbackAggregator
-from self_learning.meta_evaluator import MetaEvaluator
+from learning.learning_loop import LearningLoop
+from learning.feedback_aggregator import FeedbackAggregator
+from learning.meta_evaluator import MetaEvaluator
 
 # Mock evaluation results (would come from test_phase3_evaluation.py)
 MOCK_EVALUATION_RESULTS = {

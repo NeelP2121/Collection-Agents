@@ -1,0 +1,302 @@
+{
+  "learning_id": "f66b57b8-4139-4338-b52b-34680248f423",
+  "agent_names": [
+    "agent1",
+    "agent2",
+    "agent3"
+  ],
+  "prompt_history": {},
+  "current_best_prompts": {},
+  "insights": [
+    {
+      "insight_id": "success_agent1_cooperative",
+      "agent_name": "agent1",
+      "pattern": "Strong performance with cooperative borrowers (100% success)",
+      "impact": "positive",
+      "confidence": 0.7,
+      "failing_scenario": null,
+      "success_scenario": "cooperative",
+      "recommendation": "Maintain current approach for this scenario type",
+      "extracted_at": "2026-04-05 14:48:49.304770"
+    },
+    {
+      "insight_id": "failure_agent1_combative",
+      "agent_name": "agent1",
+      "pattern": "Poor performance with combative borrowers (0% success)",
+      "impact": "negative",
+      "confidence": 0.7,
+      "failing_scenario": "combative",
+      "success_scenario": null,
+      "recommendation": "Tone down pressure, add empathy, emphasize borrower choice and control",
+      "extracted_at": "2026-04-05 14:48:49.304811"
+    },
+    {
+      "insight_id": "failure_agent1_evasive",
+      "agent_name": "agent1",
+      "pattern": "Poor performance with evasive borrowers (0% success)",
+      "impact": "negative",
+      "confidence": 0.7,
+      "failing_scenario": "evasive",
+      "success_scenario": null,
+      "recommendation": "Use clearer language, shorter sentences, explicit consequences, urgency",
+      "extracted_at": "2026-04-05 14:48:49.304837"
+    },
+    {
+      "insight_id": "success_agent1_distressed",
+      "agent_name": "agent1",
+      "pattern": "Strong performance with distressed borrowers (100% success)",
+      "impact": "positive",
+      "confidence": 0.7,
+      "failing_scenario": null,
+      "success_scenario": "distressed",
+      "recommendation": "Maintain current approach for this scenario type",
+      "extracted_at": "2026-04-05 14:48:49.304860"
+    },
+    {
+      "insight_id": "success_agent2_cooperative",
+      "agent_name": "agent2",
+      "pattern": "Strong performance with cooperative borrowers (100% success)",
+      "impact": "positive",
+      "confidence": 0.7,
+      "failing_scenario": null,
+      "success_scenario": "cooperative",
+      "recommendation": "Maintain current approach for this scenario type",
+      "extracted_at": "2026-04-05 14:48:49.304910"
+    },
+    {
+      "insight_id": "failure_agent2_combative",
+      "agent_name": "agent2",
+      "pattern": "Poor performance with combative borrowers (0% success)",
+      "impact": "negative",
+      "confidence": 0.7,
+      "failing_scenario": "combative",
+      "success_scenario": null,
+      "recommendation": "Tone down pressure, add empathy, emphasize borrower choice and control",
+      "extracted_at": "2026-04-05 14:48:49.304933"
+    },
+    {
+      "insight_id": "failure_agent2_evasive",
+      "agent_name": "agent2",
+      "pattern": "Poor performance with evasive borrowers (0% success)",
+      "impact": "negative",
+      "confidence": 0.7,
+      "failing_scenario": "evasive",
+      "success_scenario": null,
+      "recommendation": "Use clearer language, shorter sentences, explicit consequences, urgency",
+      "extracted_at": "2026-04-05 14:48:49.304955"
+    },
+    {
+      "insight_id": "success_agent2_distressed",
+      "agent_name": "agent2",
+      "pattern": "Strong performance with distressed borrowers (100% success)",
+      "impact": "positive",
+      "confidence": 0.7,
+      "failing_scenario": null,
+      "success_scenario": "distressed",
+      "recommendation": "Maintain current approach for this scenario type",
+      "extracted_at": "2026-04-05 14:48:49.304976"
+    },
+    {
+      "insight_id": "success_agent3_cooperative",
+      "agent_name": "agent3",
+      "pattern": "Strong performance with cooperative borrowers (100% success)",
+      "impact": "positive",
+      "confidence": 0.7,
+      "failing_scenario": null,
+      "success_scenario": "cooperative",
+      "recommendation": "Maintain current approach for this scenario type",
+      "extracted_at": "2026-04-05 14:48:49.305016"
+    },
+    {
+      "insight_id": "failure_agent3_combative",
+      "agent_name": "agent3",
+      "pattern": "Poor performance with combative borrowers (0% success)",
+      "impact": "negative",
+      "confidence": 0.7,
+      "failing_scenario": "combative",
+      "success_scenario": null,
+      "recommendation": "Tone down pressure, add empathy, emphasize borrower choice and control",
+      "extracted_at": "2026-04-05 14:48:49.305037"
+    },
+    {
+      "insight_id": "failure_agent3_evasive",
+      "agent_name": "agent3",
+      "pattern": "Poor performance with evasive borrowers (0% success)",
+      "impact": "negative",
+      "confidence": 0.7,
+      "failing_scenario": "evasive",
+      "success_scenario": null,
+      "recommendation": "Use clearer language, shorter sentences, explicit consequences, urgency",
+      "extracted_at": "2026-04-05 14:48:49.305058"
+    },
+    {
+      "insight_id": "success_agent3_distressed",
+      "agent_name": "agent3",
+      "pattern": "Strong performance with distressed borrowers (100% success)",
+      "impact": "positive",
+      "confidence": 0.7,
+      "failing_scenario": null,
+      "success_scenario": "distressed",
+      "recommendation": "Maintain current approach for this scenario type",
+      "extracted_at": "2026-04-05 14:48:49.305083"
+    }
+  ],
+  "scenario_patterns": {
+    "cooperative": {
+      "agent_patterns": {},
+      "successful_changes": [],
+      "failed_changes": []
+    },
+    "combative": {
+      "agent_patterns": {},
+      "successful_changes": [],
+      "failed_changes": []
+    },
+    "evasive": {
+      "agent_patterns": {},
+      "successful_changes": [],
+      "failed_changes": []
+    },
+    "distressed": {
+      "agent_patterns": {},
+      "successful_changes": [],
+      "failed_changes": []
+    }
+  },
+  "evaluation_history": [
+    {
+      "round_id": "eval_20260405_144849",
+      "evaluation_date": "2026-04-05 14:48:49.304666",
+      "evaluation_results": {
+        "overall_resolution_rate": 50.0,
+        "overall_compliance_score": 50.0,
+        "average_turns_per_scenario": 6.25,
+        "scenarios": {
+          "cooperative": {
+            "result": "success",
+            "resolution_rate": 100,
+            "compliance_score": 100.0,
+            "turns": 8,
+            "error": null
+          },
+          "combative": {
+            "result": "failure",
+            "resolution_rate": 0,
+            "compliance_score": 0,
+            "turns": 0,
+            "error": "unsupported operand type(s) for +=: 'int' and 'NoneType'"
+          },
+          "evasive": {
+            "result": "failure",
+            "resolution_rate": 0,
+            "compliance_score": 0,
+            "turns": 0,
+            "error": "unsupported operand type(s) for +=: 'int' and 'NoneType'"
+          },
+          "distressed": {
+            "result": "success",
+            "resolution_rate": 100,
+            "compliance_score": 100.0,
+            "turns": 17,
+            "error": null
+          }
+        },
+        "recommendations": [
+          "Improve negotiation strategies - resolution rate below 70%",
+          "Address compliance violations - score below 90%",
+          "Optimize conversation length - too many turns per scenario",
+          "Overall performance needs improvement - consider prompt tuning"
+        ]
+      },
+      "agents_tested": [
+        "agent1",
+        "agent2",
+        "agent3"
+      ],
+      "scenarios_tested": [
+        "cooperative",
+        "combative",
+        "evasive",
+        "distressed"
+      ],
+      "overall_resolution_rate": 50.0,
+      "overall_compliance_score": 50.0,
+      "recommendations": [
+        "Improve negotiation strategies - resolution rate below 70%",
+        "Address compliance violations - score below 90%",
+        "Optimize conversation length - too many turns per scenario",
+        "Overall performance needs improvement - consider prompt tuning"
+      ],
+      "insights_generated": []
+    }
+  ],
+  "total_evaluations": 1,
+  "best_evaluation": {
+    "round_id": "eval_20260405_144849",
+    "evaluation_date": "2026-04-05T14:48:49.304666",
+    "evaluation_results": {
+      "overall_resolution_rate": 50.0,
+      "overall_compliance_score": 50.0,
+      "average_turns_per_scenario": 6.25,
+      "scenarios": {
+        "cooperative": {
+          "result": "success",
+          "resolution_rate": 100,
+          "compliance_score": 100.0,
+          "turns": 8,
+          "error": null
+        },
+        "combative": {
+          "result": "failure",
+          "resolution_rate": 0,
+          "compliance_score": 0,
+          "turns": 0,
+          "error": "unsupported operand type(s) for +=: 'int' and 'NoneType'"
+        },
+        "evasive": {
+          "result": "failure",
+          "resolution_rate": 0,
+          "compliance_score": 0,
+          "turns": 0,
+          "error": "unsupported operand type(s) for +=: 'int' and 'NoneType'"
+        },
+        "distressed": {
+          "result": "success",
+          "resolution_rate": 100,
+          "compliance_score": 100.0,
+          "turns": 17,
+          "error": null
+        }
+      },
+      "recommendations": [
+        "Improve negotiation strategies - resolution rate below 70%",
+        "Address compliance violations - score below 90%",
+        "Optimize conversation length - too many turns per scenario",
+        "Overall performance needs improvement - consider prompt tuning"
+      ]
+    },
+    "agents_tested": [
+      "agent1",
+      "agent2",
+      "agent3"
+    ],
+    "scenarios_tested": [
+      "cooperative",
+      "combative",
+      "evasive",
+      "distressed"
+    ],
+    "overall_resolution_rate": 50.0,
+    "overall_compliance_score": 50.0,
+    "recommendations": [
+      "Improve negotiation strategies - resolution rate below 70%",
+      "Address compliance violations - score below 90%",
+      "Optimize conversation length - too many turns per scenario",
+      "Overall performance needs improvement - consider prompt tuning"
+    ],
+    "insights_generated": []
+  },
+  "created_at": "2026-04-05T14:48:13.371950",
+  "updated_at": "2026-04-05T14:48:49.305204",
+  "learning_iterations": 1
+}

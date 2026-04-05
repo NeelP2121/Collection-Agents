@@ -7,9 +7,9 @@ import json
 import random
 from datetime import datetime
 from models.borrower_state import BorrowerContext
-from agents.agent1_assessment import run_assessment_agent
-from agents.agent2_resolution import run_resolution_agent
-from agents.agent3_final_notice import run_final_notice_agent
+from agents.agent1_assessment import AssessmentAgent
+from agents.agent2_resolution import ResolutionAgent
+from agents.agent3_final_notice import FinalNoticeAgent
 from summarizer.summarizer import Summarizer
 from utils.config import TOKEN_BUDGET_CONFIG
 
@@ -74,7 +74,7 @@ class SyntheticBorrower:
     def get_response(self, turn: int, agent_message: str, context: dict) -> str:
         """Generate synthetic borrower response dynamically using LLM"""
         from utils.llm import call_llm
-        from utils.config import LLM_MODELS
+        from utils.config import get_model
         
         # We record the agent's message as "user" from the LLM's perspective
         self.conversation_history.append({"role": "user", "content": agent_message})
@@ -95,7 +95,7 @@ INSTRUCTIONS:
             response_text = call_llm(
                 system=system_prompt,
                 messages=self.conversation_history,
-                model=LLM_MODELS.get("evaluation", "claude-3-5-haiku-20241022"),
+                model=get_model("evaluation"),
                 max_tokens=150,
                 context_category="synthetic_borrower"
             )
@@ -142,7 +142,7 @@ class Phase3Evaluator:
         try:
             # Phase 1: Agent 1
             print("Running Agent 1...")
-            agent1_result = run_assessment_agent(borrower_context)
+            agent1_result = AssessmentAgent().run_assessment_agent(borrower_context)
 
             # Phase 2: Summarize and Agent 2
             print("Summarizing Agent 1 → Agent 2...")
@@ -153,7 +153,7 @@ class Phase3Evaluator:
 
             print("Running Agent 2...")
             borrower_context.update_from_handoff(agent1_handoff)
-            agent2_result = run_resolution_agent(borrower_context)
+            agent2_result = ResolutionAgent().run_resolution_agent(borrower_context)
 
             # Check if resolved in Phase 2
             if agent2_result["outcome"] == "deal_agreed":
@@ -168,7 +168,7 @@ class Phase3Evaluator:
 
                 print("Running Agent 3...")
                 borrower_context.update_from_handoff(agent2_handoff)
-                agent3_result = run_final_notice_agent(borrower_context)
+                agent3_result = FinalNoticeAgent().run_final_notice_agent(borrower_context)
 
                 final_outcome = agent3_result["outcome"]
 
