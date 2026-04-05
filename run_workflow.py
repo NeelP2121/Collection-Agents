@@ -7,7 +7,7 @@ async def run():
     handle = await client.start_workflow(
         "BorrowerWorkflow.run",
         {"name": "John Doe", "phone": "+123456789"},
-        id="test-workflow",
+        id="multi-agent-test",
         task_queue="collections"
     )
 

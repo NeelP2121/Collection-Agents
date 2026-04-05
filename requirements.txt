@@ -1,9 +1,3 @@
-
----
-
-## requirements.txt
-
-```txt
 temporalio
 fastapi
 uvicorn
@@ -14,3 +8,5 @@ numpy
 scipy
 sqlite-utils
 anthropic
+sqlalchemy
+pydantic

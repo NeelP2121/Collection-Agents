@@ -1,8 +1,8 @@
 import asyncio
-from temporalio.worker import Worker
 from temporalio.client import Client
+from temporalio.worker import Worker
 
-from workflows.borrower_workflow import BorrowerCollectionsWorkflow
+from workflows.borrower_workflow import BorrowerWorkflow
 from workflows.activities import (
     run_assessment_agent,
     summarize_chat,
@@ -12,19 +12,19 @@ from workflows.activities import (
 )
 
 async def main():
-    client = await Client.connect("temporal:7233")
+    client = await Client.connect("localhost:7233")
 
     worker = Worker(
         client,
-        task_queue="collections-task-queue",
-        workflows=[BorrowerCollectionsWorkflow],
+        task_queue="collections",
+        workflows=[BorrowerWorkflow],
         activities=[
             run_assessment_agent,
             summarize_chat,
-            initiate_voice_call,
+            run_voice_agent,
             summarize_combined,
-            run_final_notice_agent
-        ],
+            run_final_agent
+        ]
     )
 
     await worker.run()

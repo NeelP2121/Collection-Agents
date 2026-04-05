@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Borrower Support Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-background">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <!-- Agent Chat View (Phase 1 & 3) -->
+    <main class="chat-container glass-panel" id="chat-ui">
+        <header class="chat-header">
+            <div class="agent-avatar">
+                <div class="status-indicator"></div>
+            </div>
+            <div class="header-text">
+                <h2>Account Support</h2>
+                <p id="system-status-text">Agent online</p>
+            </div>
+        </header>
+
+        <section class="messages-area" id="messages-container">
+            <!-- Messages injected dynamically via JS -->
+            <div class="message system-message">
+                Welcome to your secure account portal. A support agent is joining the chat...
+            </div>
+        </section>
+
+        <footer class="input-area">
+            <input type="text" id="chat-input" placeholder="Type your message..." autocomplete="off">
+            <button id="send-button" class="btn-primary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </footer>
+    </main>
+
+    <!-- Voice Handoff Overlay State (Phase 2) -->
+    <div class="voice-overlay glass-panel hidden" id="voice-ui">
+        <div class="phone-ring-animation">
+            <div class="pulse-ring"></div>
+            <div class="pulse-ring delay"></div>
+            <div class="phone-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            </div>
+        </div>
+        <h2>Incoming Secure Call</h2>
+        <p>Transferring to Resolution Voice Agent...</p>
+        
+        <div class="call-controls">
+            <button class="btn-decline" id="btn-call-decline">Decline</button>
+            <button class="btn-accept" id="btn-call-accept">Accept Transfer</button>
+        </div>
+        
+        <div class="call-active-state hidden" id="call-active-ui">
+            <h3 class="timer">00:00</h3>
+            <p>Speak clearly. Negotiating resolution options.</p>
+            <button class="btn-decline end-call" id="btn-call-end">End Call</button>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
