@@ -10,3 +10,6 @@ sqlite-utils
 anthropic
 sqlalchemy
 pydantic
+tiktoken
+pyyaml
+openai

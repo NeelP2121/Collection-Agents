@@ -24,12 +24,25 @@ TOKEN_BUDGET_CONFIG = {
     "agent3_system_prompt": 1500,      # Agent 3 system prompt budget (1500 + 500 handoff = 2000)
 }
 
-# LLM Model Configuration
+# LLM Configuration
 LLM_MODELS = {
-    "agent": "claude-3-5-sonnet-20241022",           # For agent conversations (better quality)
-    "evaluation": "claude-3-5-haiku-20241022",       # For evaluation scoring (cheaper)
-    "summary": "claude-3-5-haiku-20241022",          # For summaries (cheaper)
-    "mutation": "claude-3-5-haiku-20241022",         # For prompt mutations (cheaper)
+    "agent": "gpt-4o-mini",      # Fast, cheaper model for agents
+    "evaluation": "gpt-4o-mini", # Evaluator model
+    "improver": "gpt-4o",        # Complex surgical prompt edits
+    "godel": "gpt-4o"            # Meta-evaluator
+}
+
+# Pricing per 1M tokens (USD)
+# OpenAI API Pricing
+MODEL_PRICING = {
+    "gpt-4o-mini": {
+        "input": 0.150,     # $0.15 per 1M
+        "output": 0.600     # $0.60 per 1M
+    },
+    "gpt-4o": {
+        "input": 5.0,       # $5.00 per 1M
+        "output": 15.0      # $15.00 per 1M
+    }
 }
 
 # Context Window Sizes (tokens)

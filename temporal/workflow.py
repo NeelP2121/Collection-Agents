@@ -21,10 +21,13 @@ class BorrowerWorkflow:
         3. Agent 3: Final notice (escalation, final collection attempt)
         """
         
+        # Phase 1: Agent 1 - Chat Assessment
+        workflow.upsert_search_attributes({"PromptVersion": ["version_1"]})
+        
         # Initialize borrower context
         borrower_context = BorrowerContext(
-            name=borrower_data["name"],
-            phone=borrower_data["phone"],
+            name=borrower_data.get("name", "Unknown"),
+            phone=borrower_data.get("phone", ""),
             workflow_id=workflow.info().workflow_id
         )
         
@@ -41,12 +44,11 @@ class BorrowerWorkflow:
         borrower_context.agent1_messages = agent1_result.get("messages", [])
         borrower_context.advance_stage("resolution")
         
-        # Create Agent 1 → Agent 2 handoff summary (max 500 tokens)
-        print("Creating Agent 1 → Agent 2 handoff summary")
+        # Create Agent 1 → Agent 2 handoff summary (strictly < 500 tokens logic via Ledger)
+        print("Creating Agent 1 → Agent 2 strict handoff ledger")
         agent1_handoff = await workflow.execute_activity(
-            "summarize_agent1_to_agent2",
+            "generate_handoff_ledger",
             borrower_context.agent1_messages,
-            borrower_context,
             start_to_close_timeout=timedelta(minutes=2)
         )
         
@@ -84,13 +86,16 @@ class BorrowerWorkflow:
         
         borrower_context.advance_stage("final_notice")
         
-        # Create Agent 2 → Agent 3 handoff summary (max 500 tokens)
-        print("Creating Agent 2 → Agent 3 handoff summary")
+        # Create Agent 2 → Agent 3 combined handoff ledger
+        print("Creating Agent 2 → Agent 3 Strict Handoff Ledger")
+        
+        combined_history = [{"source": "agent1", "ledger": agent1_handoff}]
+        if borrower_context.agent2_transcript:
+            combined_history.append({"source": "agent2_voice", "transcript": borrower_context.agent2_transcript})
+            
         agent2_handoff = await workflow.execute_activity(
-            "summarize_agent2_to_agent3",
-            agent1_handoff,
-            borrower_context.agent2_transcript or [],
-            borrower_context,
+            "generate_handoff_ledger",
+            combined_history,
             start_to_close_timeout=timedelta(minutes=2)
         )
         
