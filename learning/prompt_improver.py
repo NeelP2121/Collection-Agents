@@ -109,11 +109,11 @@ Format as JSON array with objects: {{"variation_number": 1, "changes": "...", "n
         
         try:
             response = call_llm(
-                model=self.model,
                 system=PROMPT_ANALYSIS_SYSTEM,
-                user_message=analysis_request,
-                temperature=0.7,
-                max_tokens=2000
+                messages=[{"role": "user", "content": analysis_request}],
+                model=self.model,
+                max_tokens=2000,
+                context_category="prompt_improvement",
             )
             
             # Parse response
@@ -218,12 +218,27 @@ Format as JSON array with objects: {{"variation_number": 1, "changes": "...", "n
         
         return variations
     
-    def rank_prompts(self, prompt_variants: List[PromptVariant], 
-                     base_performance: float) -> List[PromptVariant]:
-        """Rank prompt variants by estimated performance improvement"""
-        # In production, would test each variant; for now estimate based on changes
-        for variant in prompt_variants:
-            # Estimate: each variant gets a small boost beyond base
-            variant.performance_score = base_performance + 0.05  # 5% estimated improvement
-        
-        return sorted(prompt_variants, key=lambda v: v.performance_score, reverse=True)
+    def generate_and_validate_variants(
+        self,
+        agent_name: str,
+        current_prompt: str,
+        evaluation_results: Dict[str, Any],
+        num_variations: int = 3,
+    ) -> List[PromptVariant]:
+        """
+        Generate variants and compliance-gate each prompt text before testing.
+        Returns only variants that pass the compliance pre-flight.
+        """
+        from compliance.checker import verify_prompt_safety
+
+        raw = self.generate_prompt_variations(
+            agent_name, current_prompt, evaluation_results, num_variations
+        )
+        safe = []
+        for v in raw:
+            is_safe, violations = verify_prompt_safety(v.prompt_text)
+            if is_safe:
+                safe.append(v)
+            else:
+                logger.warning(f"Variant {v.variant_id} failed prompt compliance: {violations}")
+        return safe

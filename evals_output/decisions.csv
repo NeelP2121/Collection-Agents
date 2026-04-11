@@ -1,0 +1,6 @@
+iteration,agent,variant_id,adopted,p_value,cohens_d,ci_lower,ci_upper,mean_improvement_pct,variance_ratio,baseline_mean,baseline_std,variant_mean,variant_std,n_baseline,n_variant,rejection_reasons
+0,test_agent,test_v1,True,0.01,0.8,0.1,0.3,15.0,1.5,0.5,0.1,0.7,0.1,10,10,
+0,test_agent,test_v1,True,0.01,0.8,0.1,0.3,15.0,1.5,0.5,0.1,0.7,0.1,10,10,
+1,assessment,assessment_v20260407_181521_var1,False,1.0,0.0,0.0,0.0,0.0,1.0,0.425,0.0,0.425,0.0,3,3,p=1.0000 >= 0.05 (not significant)|d=0.000 < 0.5 (effect too small)|improvement=0.0% < 15%|CI lower=0.0000 <= 0 (improvement not confident)
+1,resolution,resolution_v20260407_181725_var1,False,1.0,0.0,0.0,0.0,0.0,1.0,1.0,0.0,1.0,0.0,3,3,p=1.0000 >= 0.05 (not significant)|d=0.000 < 0.5 (effect too small)|improvement=0.0% < 15%|CI lower=0.0000 <= 0 (improvement not confident)
+1,final_notice,final_notice_v20260407_182146_var1,False,0.42265,0.8165,-0.1376,0.2209,4.35,inf,0.9583,0.0722,1.0,0.0,3,3,p=0.4226 >= 0.05 (not significant)|improvement=4.3% < 15%|variance_ratio=inf too high (inconsistent)|CI lower=-0.1376 <= 0 (improvement not confident)

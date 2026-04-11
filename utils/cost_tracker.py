@@ -70,6 +70,23 @@ class CostTracker:
                     f"LLM Budget exceeded: ${self.data['total_spend_usd']:.4f} >= limit ${self.limit_usd:.2f}"
                 )
 
+    def record_vapi_cost(self, duration_seconds: float, category: str = "vapi_voice") -> float:
+        """Record cost for a VAPI voice call. VAPI charges ~$0.05/min."""
+        cost_per_minute = 0.05
+        duration_minutes = duration_seconds / 60.0
+        cost = duration_minutes * cost_per_minute
+
+        with self._lock:
+            self.data["total_spend_usd"] += cost
+            if category not in self.data["breakdown_by_category"]:
+                self.data["breakdown_by_category"][category] = {"tokens": 0, "cost": 0.0}
+            self.data["breakdown_by_category"][category]["cost"] += cost
+            if "vapi" not in self.data["breakdown_by_model"]:
+                self.data["breakdown_by_model"]["vapi"] = {"tokens": 0, "cost": 0.0}
+            self.data["breakdown_by_model"]["vapi"]["cost"] += cost
+            self._save()
+        return cost
+
     def record_call_cost(self, model: str, input_tokens: int, output_tokens: int, category: str = "general") -> float:
         """Record the token usage and cost for an API call."""
         input_tokens = input_tokens or 0

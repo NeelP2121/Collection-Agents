@@ -60,87 +60,98 @@ def _map_future_model(model: str, provider: str) -> str:
     
     return model
 
-def call_llm(system: str, messages: list, model: str = None, max_tokens: int = 300, context_category: str = "general") -> str:
+def call_llm(
+    system: str,
+    messages: list,
+    model: str = None,
+    max_tokens: int = 300,
+    context_category: str = "general",
+    temperature: float = 0.0,
+) -> str:
+    """Call the LLM with temperature=0.0 by default for deterministic evaluation."""
     current_provider = get_provider()
     client = get_client(current_provider)
-    
+
     # Fallback to config models if none provided
     if model is None:
         model = LLM_MODELS.get(current_provider, {}).get("agent")
-    
+
     # Apply Compatibility Mapping for future models
     model = _map_future_model(model, current_provider)
-    
+
     try:
         get_cost_tracker().check_budget()
-        
+
         # --- OPENAI & OLLAMA (Shared OpenAI Schema) ---
         if current_provider in ["openai", "ollama"]:
             oai_messages = [{"role": "system", "content": system}] + messages
             response = client.chat.completions.create(
                 model=model,
                 max_tokens=max_tokens,
-                messages=oai_messages
+                temperature=temperature,
+                messages=oai_messages,
             )
-            
+
             get_cost_tracker().record_call_cost(
                 model=model,
                 input_tokens=response.usage.prompt_tokens,
                 output_tokens=response.usage.completion_tokens,
-                category=context_category
+                category=context_category,
             )
             return response.choices[0].message.content
-        
+
         # --- ANTHROPIC ---
         elif current_provider == "anthropic":
             response = client.messages.create(
                 model=model,
                 max_tokens=max_tokens,
+                temperature=temperature,
                 system=system,
-                messages=messages
+                messages=messages,
             )
-            
+
             get_cost_tracker().record_call_cost(
                 model=model,
                 input_tokens=response.usage.input_tokens,
                 output_tokens=response.usage.output_tokens,
-                category=context_category
+                category=context_category,
             )
             return response.content[0].text
-        
+
         # --- GEMINI ---
         elif current_provider == "gemini":
             contents = []
             for msg in messages:
                 role = "user" if msg["role"] == "user" else "model"
                 contents.append({"role": role, "parts": [{"text": msg["content"]}]})
-            
+
             # Gemini SDK requires at least one content item
             if not contents:
                 contents = [{"role": "user", "parts": [{"text": "Begin."}]}]
-            
+
             response = client.models.generate_content(
                 model=model,
                 contents=contents,
                 config={
                     "system_instruction": system,
                     "max_output_tokens": max_tokens,
-                }
+                    "temperature": temperature,
+                },
             )
-            
+
             # Use actual usage metadata from Google's GenAI SDK
             usage = response.usage_metadata
             get_cost_tracker().record_call_cost(
                 model=model,
                 input_tokens=usage.prompt_token_count,
                 output_tokens=usage.candidates_token_count,
-                category=context_category
+                category=context_category,
             )
             return response.text
-        
+
         else:
             raise ValueError(f"Provider {current_provider} implementation missing.")
-            
+
     except Exception as e:
         logger.error(f"LLM call failed on {current_provider}: {e}")
         raise

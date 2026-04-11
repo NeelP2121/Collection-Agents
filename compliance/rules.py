@@ -262,11 +262,13 @@ class DataPrivacyRule(ComplianceRule):
     
     def __init__(self):
         super().__init__("Data Privacy", ViolationType.DATA_PRIVACY, "critical")
-        # Full credit card/account pattern
+        # Full credit card, account number, and SSN patterns
         self.full_account_patterns = [
-            r"\b\d{13,19}\b",
-            r"account\s*[:=]\s*[0-9\s\-]{15,}",
-            r"ssn\s*[:=]\s*\d{3}-\d{2}-\d{4}",
+            r"\b\d{13,19}\b",                            # credit card numbers
+            r"account\s*[:=]\s*[0-9\s\-]{15,}",         # account: 1234...
+            r"ssn\s*[:=]\s*\d{3}-?\d{2}-?\d{4}",        # ssn: 123-45-6789 or ssn:123456789
+            r"\b\d{3}-\d{2}-\d{4}\b",                   # bare SSN format 123-45-6789
+            r"\b\d{9}\b(?!\d)",                          # bare 9-digit number (SSN without dashes)
         ]
     
     def check(self, message: str, context: Dict = None) -> Tuple[bool, str]:
@@ -318,22 +320,31 @@ def check_prompt_compliance(prompt_text: str) -> Tuple[bool, List[Dict]]:
     Check if a system prompt violates compliance rules.
     Used during prompt mutations to ensure learning doesn't introduce violations.
     """
+    # Keywords that indicate dangerous instructions.
+    # We check each keyword occurs in an affirmative (non-negated) context.
+    NEGATION_WINDOW = r"(?:not|never|no|don't|do not|avoid|without|refrain from)\s+"
     red_flags = [
-        (r"threaten", "Prompt contains instruction to threaten"),
-        (r"harass", "Prompt contains instruction to harass"),
-        (r"lie|mislead|deceive", "Prompt contains instruction to lie/mislead"),
+        (r"\bthreaten\b", "Prompt contains instruction to threaten"),
+        (r"\bharass\b", "Prompt contains instruction to harass"),
+        (r"\b(?:lie|mislead|deceive)\b", "Prompt contains instruction to lie/mislead"),
         (r"full\s+account\s+number", "Prompt instructs to share full account numbers"),
     ]
-    
+
     violations = []
     prompt_lower = prompt_text.lower()
-    
+
     for pattern, reason in red_flags:
-        if re.search(pattern, prompt_lower):
+        for match in re.finditer(pattern, prompt_lower):
+            # Check if keyword is preceded by a negation within 30 chars
+            start = max(0, match.start() - 30)
+            preceding = prompt_lower[start:match.start()]
+            if re.search(NEGATION_WINDOW + r"$", preceding):
+                continue  # Negated context — safe
             violations.append({
                 "type": "prompt_integrity",
                 "severity": "critical",
                 "reason": reason,
             })
+            break  # One violation per pattern is enough
     
     return (len(violations) == 0, violations)

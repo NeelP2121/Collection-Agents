@@ -4,11 +4,16 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def _read_secret(filename: str) -> str:
-    """Read a secret from the secrets/ directory, return empty string if not found."""
-    path = os.path.join("secrets", filename)
-    if os.path.exists(path):
-        with open(path, "r") as f:
-            return f.read().strip()
+    """Read a secret from secrets/ directory or Docker /run/secrets/ mount."""
+    # Docker secrets are mounted without the .txt extension
+    secret_name = filename.replace(".txt", "")
+    for path in [
+        os.path.join("secrets", filename),        # Local dev: secrets/anthropic_key.txt
+        f"/run/secrets/{secret_name}",             # Docker: /run/secrets/anthropic_key
+    ]:
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                return f.read().strip()
     return ""
 
 # --- API Keys (env vars take priority, secrets/ files as fallback) ---
@@ -22,17 +27,17 @@ VAPI_ASSISTANT_ID = os.getenv("VAPI_ASSISTANT_ID") or ""
 
 # --- Provider Selection ---
 # Set LLM_PROVIDER in .env to one of: anthropic | openai | gemini | ollama
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "anthropic").lower()
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "anthropic").lower()  # Default: Anthropic Claude
 USE_OLLAMA = LLM_PROVIDER == "ollama"
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 
 # --- Provider-Specific Models (real, production model IDs) ---
 LLM_MODELS = {
     "anthropic": {
-        "agent": "claude-4-5-haiku",       # Current fastest Claude
-        "evaluation": "claude-4-6-sonnet", # Current industry standard
-        "improver": "claude-4-6-sonnet",
-        "godel": "claude-4-6-opus"         # Most intelligent
+        "agent": "claude-haiku-4-5-20251001",  # Current fastest Claude
+        "evaluation": "claude-sonnet-4-6",     # Current industry standard
+        "improver": "claude-sonnet-4-6",
+        "godel": "claude-opus-4-6",            # Most intelligent
     },
     "openai": {
         "agent": "gpt-5.4-mini",           # Updated mini model
@@ -112,6 +117,7 @@ WORKFLOW_TIMEOUTS = {
 LEARNING_CONFIG = {
     "max_iterations":            5,
     "conversations_per_eval":    25,
+    "conversations_per_variant": 25,    # N per group — see power_analysis() for justification
     "effect_size_threshold":     0.5,   # Cohen's d
     "improvement_threshold_pct": 0.15,  # 15% required improvement
     "max_variance_ratio":        0.25,

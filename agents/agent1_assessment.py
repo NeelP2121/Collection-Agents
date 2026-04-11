@@ -46,15 +46,23 @@ class AssessmentAgent(BaseAgent):
         
         MAX_TURNS = 10
         turn = 0
-        
+
+        # Seed with an initial user message so the first LLM call is valid
+        # (Anthropic requires messages to start with role=user)
+        messages.append({"role": "user", "content": f"Hello, this is {borrower_name}."})
+
         while turn < MAX_TURNS:
             turn += 1
-            
+
+            # Hard-enforce 2000-token budget before every LLM dispatch
+            budgeted_messages = self.enforce_message_budget(messages)
+
             response = call_llm(
                 system=self.system_prompt,
-                messages=messages,
+                messages=budgeted_messages,
                 model=get_model("agent"),
-                max_tokens=300
+                max_tokens=300,
+                context_category="assessment",
             )
             
             context = {
@@ -70,7 +78,34 @@ class AssessmentAgent(BaseAgent):
             
             if not is_compliant:
                 logger.warning(f"Agent 1 compliance violation(s): {violations}")
-            
+                # Hard stop: if any CRITICAL violation, replace response with safe fallback
+                critical = [v for v in violations if v["severity"] == "critical"]
+                if critical:
+                    logger.error(f"Agent 1 CRITICAL violation — blocking message: {critical[0]['type']}")
+                    response = (
+                        "I am an AI agent and this conversation is being recorded. "
+                        "This is an attempt to collect a debt and any information obtained "
+                        "will be used for that purpose. I apologize for the confusion. "
+                        "How can I help you today?"
+                    )
+                # Conversation-level hard stop: 3+ critical violations → terminate
+                total_critical = sum(
+                    1 for v in borrower_context.compliance_violations
+                    if v.get("severity") == "critical"
+                )
+                if total_critical >= 3:
+                    logger.error(
+                        f"Agent 1 CONVERSATION TERMINATED: {total_critical} critical "
+                        "violations exceeded safety threshold."
+                    )
+                    messages.append({"role": "assistant", "content": response})
+                    borrower_context.agent1_messages = messages
+                    return {
+                        "result": {"identity_verified": False, "compliance_terminated": True},
+                        "messages": messages,
+                        "outcome": "compliance_terminated",
+                    }
+
             messages.append({"role": "assistant", "content": response})
             
             if hasattr(borrower_context, 'test_borrower_response_fn') and borrower_context.test_borrower_response_fn:

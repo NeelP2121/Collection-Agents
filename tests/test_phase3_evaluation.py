@@ -59,6 +59,15 @@ class SyntheticBorrower:
                 "willingness": "low",
                 "hardship": True,
                 "response_style": "distressed"
+            },
+            "confused": {
+                "name": "Lisa Thompson",
+                "phone": "555-0105",
+                "employment": "employed",
+                "income": "medium",
+                "willingness": "medium",
+                "hardship": False,
+                "response_style": "confused"
             }
         }
 
@@ -79,16 +88,49 @@ class SyntheticBorrower:
         # We record the agent's message as "user" from the LLM's perspective
         self.conversation_history.append({"role": "user", "content": agent_message})
         
-        system_prompt = f"""You are {self.name}, an individual who owes a debt but is currently acting {self.response_style}.
+        persona_behaviors = {
+            "cooperative": (
+                "You are WILLING to resolve this debt. After the collector explains options, "
+                "you ask a clarifying question, then AGREE to a payment plan or settlement "
+                "within 3-4 turns. Say things like 'that sounds reasonable' or 'I can do that'."
+            ),
+            "combative": (
+                "You are HOSTILE and REFUSE to pay. You dispute the debt, demand proof, "
+                "threaten to complain to regulators, and say 'I'm not paying' or 'this is "
+                "harassment'. NEVER agree to any offer. If pushed, say 'stop calling me'."
+            ),
+            "evasive": (
+                "You are EVASIVE and NON-COMMITTAL. Give vague answers like 'I'll think about it', "
+                "'maybe later', 'I'm not sure'. Never say yes or no directly. Deflect with "
+                "'can you send me something in writing?' or 'I need to talk to my spouse first'."
+            ),
+            "distressed": (
+                "You are in FINANCIAL DISTRESS. Mention losing your job, medical bills, or "
+                "inability to afford basic needs. Say things like 'I lost my job', 'I can't "
+                "afford food', 'I'm in a crisis'. You want help but CANNOT pay right now."
+            ),
+            "confused": (
+                "You are CONFUSED about what's happening. You don't understand debt collection "
+                "terminology. Ask questions like 'what does settlement mean?', 'who are you?', "
+                "'I don't understand'. Ask the agent to explain things in simpler terms. "
+                "Eventually you may agree if they explain clearly, but take 5+ turns to get there."
+            ),
+        }
+
+        behavior = persona_behaviors.get(self.response_style, persona_behaviors["cooperative"])
+
+        system_prompt = f"""You are {self.name}, an individual who owes a debt.
 Your current employment is: {self.employment}.
 Your approximate income is: ${self._income_to_amount()}.
 Are you experiencing hardship? {'Yes' if self.hardship else 'No'}.
 
-INSTRUCTIONS:
-- Keep your responses under 3 sentences.
+BEHAVIOR (follow this EXACTLY):
+{behavior}
+
+RULES:
+- Keep responses under 3 sentences.
 - Speak exactly as a real person talking to a debt collector would.
-- Your persona style is: {self.response_style}.
-- Do NOT break character as a borrower. Do NOT say 'as an AI'.
+- Do NOT break character. Do NOT say 'as an AI'.
 - The user is the debt collector."""
 
         try:
@@ -321,5 +363,60 @@ def run_phase3_evaluation():
 
     return formatted_eval
 
+def test_synthetic_borrower_personas():
+    """Verify all 5 persona types can be instantiated and respond."""
+    for persona in ["cooperative", "combative", "evasive", "distressed", "confused"]:
+        b = SyntheticBorrower(persona)
+        assert b.name, f"{persona} has no name"
+        assert b.phone, f"{persona} has no phone"
+        assert b.response_style == persona
+    print("✓ All 5 synthetic borrower personas instantiate correctly")
+
+
+def test_synthetic_borrower_income_mapping():
+    """Verify income levels map to dollar amounts."""
+    b = SyntheticBorrower("cooperative")
+    assert b._income_to_amount() == "3000/month"
+    b2 = SyntheticBorrower("distressed")
+    assert b2._income_to_amount() == "800/month"
+    print("✓ Income mapping is correct")
+
+
+def test_evaluator_metric_calculation():
+    """Verify Phase3Evaluator.calculate_metrics returns expected keys."""
+    evaluator = Phase3Evaluator()
+    ctx = BorrowerContext(name="Test", phone="555-0000")
+    ctx.final_outcome = "resolved"
+    ctx.agent1_messages = [{"role": "assistant", "content": "hi"}] * 4
+    metrics = evaluator.calculate_metrics(ctx, "cooperative")
+    assert "resolution_rate" in metrics
+    assert "compliance_score" in metrics
+    assert "overall_score" in metrics
+    assert metrics["resolution_rate"] == 1.0
+    print("✓ Metric calculation returns expected structure and values")
+
+
+def test_evaluator_recommendations():
+    """Verify recommendations trigger on low scores."""
+    evaluator = Phase3Evaluator()
+    low_metrics = {
+        "avg_resolution_rate": 0.5,
+        "avg_compliance_score": 0.7,
+        "avg_efficiency_score": 0.4,
+        "avg_overall_score": 0.6,
+    }
+    recs = evaluator.generate_recommendations(low_metrics)
+    assert len(recs) >= 3, f"Expected ≥3 recommendations for low scores, got {len(recs)}"
+    print(f"✓ Generated {len(recs)} recommendations for low-scoring metrics")
+
+
 if __name__ == "__main__":
-    run_phase3_evaluation()
+    # Unit tests (no LLM calls)
+    test_synthetic_borrower_personas()
+    test_synthetic_borrower_income_mapping()
+    test_evaluator_metric_calculation()
+    test_evaluator_recommendations()
+    print("\n✓ All Phase 3 unit tests passed")
+
+    # Full evaluation (requires LLM API key)
+    # run_phase3_evaluation()

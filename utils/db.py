@@ -91,6 +91,7 @@ def save_evaluation_run(run_id: str, agent_name: str, prompt_version: int, num_c
         )
         db.add(eval_run)
         db.commit()
+        db.refresh(eval_run)
         return eval_run
     finally:
         db.close()
@@ -184,5 +185,74 @@ def get_violations_by_agent(agent_name: str, limit: int = 100):
         return db.query(ComplianceViolation).filter(
             ComplianceViolation.agent_name == agent_name
         ).order_by(ComplianceViolation.timestamp.desc()).limit(limit).all()
+    finally:
+        db.close()
+
+
+def rollback_prompt(agent_name: str) -> bool:
+    """
+    Rollback to the previous active prompt version.
+
+    Deactivates the current active prompt and reactivates the most recent
+    previously-active version. Returns True if rollback succeeded.
+    """
+    db = get_db()
+    try:
+        # Find current active
+        current = db.query(AgentPrompt).filter(
+            AgentPrompt.agent_name == agent_name,
+            AgentPrompt.is_active == True,
+        ).first()
+
+        if not current:
+            return False
+
+        # Find the most recent non-active adopted prompt (has adoption_reason)
+        previous = (
+            db.query(AgentPrompt)
+            .filter(
+                AgentPrompt.agent_name == agent_name,
+                AgentPrompt.is_active == False,
+                AgentPrompt.id < current.id,
+                AgentPrompt.adoption_reason != None,
+            )
+            .order_by(AgentPrompt.id.desc())
+            .first()
+        )
+
+        if not previous:
+            return False
+
+        current.is_active = False
+        current.rejected_because = "Rolled back due to regression"
+        previous.is_active = True
+        db.commit()
+
+        return True
+    finally:
+        db.close()
+
+
+def get_previous_prompt(agent_name: str):
+    """Get the most recent non-active adopted prompt for rollback preview."""
+    db = get_db()
+    try:
+        active = db.query(AgentPrompt).filter(
+            AgentPrompt.agent_name == agent_name,
+            AgentPrompt.is_active == True,
+        ).first()
+        if not active:
+            return None
+        return (
+            db.query(AgentPrompt)
+            .filter(
+                AgentPrompt.agent_name == agent_name,
+                AgentPrompt.is_active == False,
+                AgentPrompt.id < active.id,
+                AgentPrompt.adoption_reason != None,
+            )
+            .order_by(AgentPrompt.id.desc())
+            .first()
+        )
     finally:
         db.close()

@@ -1,23 +1,32 @@
-version: "3.8"
-
 services:
   temporal:
-    image: temporalio/admin-tools:latest
+    image: temporalio/admin-tools:1.26.2
     command: temporal server start-dev --ip 0.0.0.0 --ui-port 8080 --ui-ip 0.0.0.0
     ports:
       - "7233:7233"
       - "8080:8080"
+    healthcheck:
+      test: ["CMD", "temporal", "workflow", "list", "--address", "localhost:7233"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 10s
 
   worker:
     build: .
-    command: python -m workers.main
+    command: >
+      sh -c "python -c 'from utils.db import init_db; init_db()' && python scripts/wait_for_temporal.py"
     depends_on:
-      - temporal
+      temporal:
+        condition: service_healthy
     env_file:
       - .env
     environment:
-      - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
       - TEMPORAL_HOST=temporal:7233
+      - DB_PATH=/data/collections_agents.db
+    volumes:
+      - db-data:/data
     secrets:
       - anthropic_key
       - openai_key
@@ -25,17 +34,30 @@ services:
       - vapi_key
       - vapi_phone_id
       - vapi_public_key
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import temporalio; print(\"ok\")'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   voice-webhook:
     build: .
     command: uvicorn voice.webhook:app --host 0.0.0.0 --port 8001
     ports:
       - "8001:8001"
+    depends_on:
+      temporal:
+        condition: service_healthy
     env_file:
       - .env
     environment:
-      - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
       - TEMPORAL_HOST=temporal:7233
+      - SERVER_URL=http://voice-webhook:8001
+      - DB_PATH=/data/collections_agents.db
+    volumes:
+      - db-data:/data
     secrets:
       - anthropic_key
       - openai_key
@@ -43,17 +65,29 @@ services:
       - vapi_key
       - vapi_phone_id
       - vapi_public_key
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   web-portal:
     build: .
     command: uvicorn api.server:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
+    depends_on:
+      temporal:
+        condition: service_healthy
     env_file:
       - .env
     environment:
-      - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
       - TEMPORAL_HOST=temporal:7233
+      - DB_PATH=/data/collections_agents.db
+    volumes:
+      - db-data:/data
     secrets:
       - anthropic_key
       - openai_key
@@ -61,6 +95,15 @@ services:
       - vapi_key
       - vapi_phone_id
       - vapi_public_key
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  db-data:
 
 secrets:
   anthropic_key:

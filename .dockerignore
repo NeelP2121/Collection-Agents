@@ -1,0 +1,17 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+.env
+secrets/
+*.db
+*.sqlite
+evals_output/
+llm_spend_ledger.json
+.claude/
+node_modules/
+*.egg-info/
+dist/
+build/

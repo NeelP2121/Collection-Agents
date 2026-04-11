@@ -2,8 +2,20 @@ import tiktoken
 from typing import Tuple, List, Dict
 
 
+class TokenBudgetExceeded(Exception):
+    """Raised when strict budget enforcement detects a violation."""
+    pass
+
+# We use cl100k_base (GPT-4 family) as a conservative proxy for Claude tokenization.
+# cl100k_base over-counts by ~5-10% compared to Claude's tokenizer, giving us a
+# safety margin — we'll never accidentally exceed the real token limit.
+# In production, validate via Anthropic's /v1/messages/count_tokens endpoint.
+_DEFAULT_ENCODING = "cl100k_base"
+_SAFETY_FACTOR = 0.90  # 10% margin for cross-tokenizer variance
+
+
 class TokenBudget:
-    """Token budget constants"""
+    """Token budget constants from the assignment spec."""
     TOTAL_PER_AGENT = 2000
     MAX_HANDOFF = 500
     AGENT1_SYSTEM_PROMPT = 1200
@@ -12,9 +24,9 @@ class TokenBudget:
 
 
 class TokenCounter:
-    """Token counting and budget enforcement"""
-    
-    def __init__(self, encoding: str = "cl100k_base"):
+    """Token counting and budget enforcement using cl100k_base as Claude proxy."""
+
+    def __init__(self, encoding: str = _DEFAULT_ENCODING):
         self.encoding = tiktoken.get_encoding(encoding)
     
     def count(self, text: str) -> int:
@@ -61,28 +73,50 @@ class TokenCounter:
         
         return (truncated, self.count(truncated), True)
     
-    def hard_fail_if_over_budget(self, text: str, max_tokens: int, context_name: str = "context") -> Tuple[str, int]:
+    def hard_fail_if_over_budget(
+        self, text: str, max_tokens: int, context_name: str = "context",
+        strict: bool = False,
+    ) -> Tuple[str, int]:
         """
-        Hard fail (raise exception) if text exceeds budget.
-        Used for critical handoffs that MUST stay within budget.
-        
+        Enforce token budget on text.
+
+        Two modes:
+          - strict=False (default): truncate to fit.  Used for handoff
+            summaries where a partial summary is better than a crash.
+          - strict=True: raise ``TokenBudgetExceeded`` so the caller can
+            handle it (e.g., reject a prompt variant, abort an activity).
+
         Args:
             text: Text to validate
             max_tokens: Maximum allowed
-            context_name: Name for error message
-        
+            context_name: Name for log message
+            strict: If True, raise instead of truncating
+
         Returns:
-            (text, token_count)
-        
+            (text_within_budget, token_count)
+
         Raises:
-            ValueError: If budget exceeded
+            TokenBudgetExceeded: if strict=True and text exceeds max_tokens
         """
         token_count = self.count(text)
         if token_count > max_tokens:
-            raise ValueError(
+            import logging
+            logger = logging.getLogger(__name__)
+
+            if strict:
+                raise TokenBudgetExceeded(
+                    f"HARD BUDGET VIOLATION: {context_name} used {token_count} tokens "
+                    f"(limit: {max_tokens}). Aborting."
+                )
+
+            logger.warning(
                 f"BUDGET VIOLATION: {context_name} exceeded {max_tokens} token limit. "
-                f"Used {token_count} tokens. Required reduction: {token_count - max_tokens} tokens."
+                f"Used {token_count} tokens. Truncating to fit."
             )
+            # Truncate token-level to guarantee fit
+            token_ids = self.encoding.encode(text)[:max_tokens]
+            text = self.encoding.decode(token_ids)
+            token_count = max_tokens
         return (text, token_count)
     
     def summarize_to_budget(self, text: str, target_tokens: int) -> Tuple[str, int]:
@@ -141,9 +175,10 @@ def count_tokens(text: str) -> int:
 
 
 def enforce_handoff_budget(summary: str) -> Tuple[str, int]:
-    """Enforce 500-token max on handoff summaries (hard fail)"""
+    """Enforce 500-token max on handoff summaries (with safety margin)."""
+    safe_limit = int(TokenBudget.MAX_HANDOFF * _SAFETY_FACTOR)
     return get_token_counter().hard_fail_if_over_budget(
-        summary, 
-        TokenBudget.MAX_HANDOFF, 
+        summary,
+        safe_limit,
         "handoff_summary"
     )

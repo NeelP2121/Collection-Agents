@@ -1,7 +1,7 @@
 {
-  "total_spend_usd": 0.007575599999999999,
-  "total_input_tokens": 43295,
-  "total_output_tokens": 14116,
+  "total_spend_usd": 0.8929281999999991,
+  "total_input_tokens": 221703,
+  "total_output_tokens": 53914,
   "breakdown_by_model": {
     "gemma4": {
       "tokens": 6472,
@@ -16,22 +16,66 @@
       "cost": 0.0075536
     },
     "claude-haiku-4-5-20251001": {
-      "tokens": 1817,
-      "cost": 0.0
+      "tokens": 90302,
+      "cost": 0.09908559999999995
+    },
+    "claude-sonnet-4-6": {
+      "tokens": 127776,
+      "cost": 0.7542120000000001
+    },
+    "claude-opus-4-6": {
+      "tokens": 1945,
+      "cost": 0.032055
     }
   },
   "breakdown_by_category": {
     "general": {
-      "tokens": 35074,
-      "cost": 0.004487800000000002
+      "tokens": 69296,
+      "cost": 0.2405902
     },
     "meta_evaluation_introspection": {
-      "tokens": 2975,
-      "cost": 0.0006571999999999999
+      "tokens": 6119,
+      "cost": 0.028665200000000002
     },
     "synthetic_borrower": {
-      "tokens": 19142,
-      "cost": 0.0024085999999999995
+      "tokens": 91170,
+      "cost": 0.31140860000000004
+    },
+    "voice_resolution": {
+      "tokens": 65546,
+      "cost": 0.06872799999999998
+    },
+    "transcript_analysis": {
+      "tokens": 7477,
+      "cost": 0.064503
+    },
+    "assessment": {
+      "tokens": 21945,
+      "cost": 0.029143199999999998
+    },
+    "prompt_improvement": {
+      "tokens": 9427,
+      "cost": 0.108189
+    },
+    "debug": {
+      "tokens": 293,
+      "cost": 0.0033030000000000004
+    },
+    "final_notice": {
+      "tokens": 628,
+      "cost": 0.000912
+    },
+    "godel_monitor": {
+      "tokens": 1945,
+      "cost": 0.032055
+    },
+    "godel_validation": {
+      "tokens": 1394,
+      "cost": 0.0048660000000000005
+    },
+    "godel_violation_check": {
+      "tokens": 157,
+      "cost": 0.0005430000000000001
     }
   }
 }

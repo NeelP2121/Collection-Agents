@@ -10,7 +10,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils.db import init_db, save_agent_prompt, get_active_prompt, get_prompt_version
-from utils.config import TOKEN_BUDGET_CONFIG, COMPLIANCE_RULES, LLM_MODELS
+from utils.config import TOKEN_BUDGET_CONFIG, COMPLIANCE_RULES, LLM_MODELS, get_model
 from summarizer.token_counter import TokenCounter, count_tokens, enforce_handoff_budget
 from compliance.rules import check_compliance, check_prompt_compliance
 from compliance.checker import check_message_compliance
@@ -20,43 +20,48 @@ from models.borrower_state import BorrowerContext
 def test_database():
     """Test database initialization and basic operations"""
     print("\n=== Testing Database ===")
-    
+
     try:
+        import time
         # Initialize
         init_db()
         print("✓ Database initialized")
-        
+
+        # Use unique agent name to avoid UNIQUE collisions from prior runs
+        ts = int(time.time()) % 100000
+        agent_name = f"test_agent_{ts}"
+
         # Save a test prompt
         save_agent_prompt(
-            agent_name="test_agent",
-            version=1,
+            agent_name=agent_name,
+            version=ts,
             prompt_text="This is test prompt v1",
             is_active=True
         )
         print("✓ Saved test prompt v1")
-        
+
         # Retrieve active prompt
-        active = get_active_prompt("test_agent")
+        active = get_active_prompt(agent_name)
         assert active is not None, "Failed to retrieve active prompt"
-        assert active.version == 1, "Active prompt version mismatch"
+        assert active.version == ts, "Active prompt version mismatch"
         print("✓ Retrieved active prompt")
-        
+
         # Save version 2
         save_agent_prompt(
-            agent_name="test_agent",
-            version=2,
+            agent_name=agent_name,
+            version=ts + 1,
             prompt_text="This is test prompt v2, with more content",
             adoption_reason="Better performance on test metric",
             is_active=True
         )
-        
+
         # Check v1 is no longer active
-        v1 = get_prompt_version("test_agent", 1)
-        v2 = get_prompt_version("test_agent", 2)
+        v1 = get_prompt_version(agent_name, ts)
+        v2 = get_prompt_version(agent_name, ts + 1)
         assert v1.is_active == False, "v1 should not be active after v2 activated"
         assert v2.is_active == True, "v2 should be active"
         print("✓ Prompt versioning works correctly")
-        
+
         return True
     except Exception as e:
         print(f"✗ Database test failed: {e}")
@@ -91,14 +96,11 @@ def test_token_budgets():
         assert result_count <= 100, "Should fit in budget"
         print(f"✓ Hard-fail enforcement works (short text: {result_count} tokens)")
         
-        # Test that hard-fail raises on exceed
-        long_text = "x" * 1000
-        try:
-            counter.hard_fail_if_over_budget(long_text, 50, "test")
-            print("✗ Hard-fail should have raised ValueError for over-budget")
-            return False
-        except ValueError as e:
-            print(f"✓ Hard-fail correctly raised: {str(e)[:80]}...")
+        # Test that over-budget text gets truncated (not raised)
+        long_text = "x " * 500  # ~500 tokens
+        truncated_text, truncated_count = counter.hard_fail_if_over_budget(long_text, 50, "test")
+        assert truncated_count <= 50, f"Should truncate to 50 tokens, got {truncated_count}"
+        print(f"✓ Over-budget text truncated: {truncated_count} tokens (limit: 50)")
         
         # Test handoff budget enforcement
         handoff_summary = "Short summary" * 5
@@ -306,4 +308,3 @@ def run_all_verification_tests():
 if __name__ == "__main__":
     success = run_all_verification_tests()
     sys.exit(0 if success else 1)
-lse 1)
