@@ -3,6 +3,7 @@ let currentPhase = 1;
 let vapiInstance = null;
 let vapiConfigured = false;
 let callInterval = null;
+let callEnded = false;
 
 const chatInput = document.getElementById('chat-input');
 const sendBtn = document.getElementById('send-button');
@@ -123,6 +124,7 @@ btnAccept.addEventListener('click', async () => {
         if (AudioCtx) { const ctx = new AudioCtx(); await ctx.resume(); }
     } catch (_) {}
 
+    callEnded = false;
     callControls.classList.add('hidden');
     callActiveUI.classList.remove('hidden');
     startCallTimer();
@@ -234,12 +236,15 @@ function stopVapiCall() {
 }
 
 async function invokeCallEndSim() {
+    if (callEnded) return;
+    callEnded = true;
+
     voiceUI.classList.add('hidden');
     chatUI.style.filter = "none";
     chatUI.style.opacity = "1";
 
     appendSystemMessage("Voice Call Ended.");
-    appendSystemMessage("Agent 3 (Final Notice) is joining the chat...");
+    appendSystemMessage("Processing voice transcript securely...");
     showTyping();
 
     await fetch('/api/simulate-call-end', {
@@ -248,9 +253,30 @@ async function invokeCallEndSim() {
         body: JSON.stringify({ session_id: sessionId, message: "", phase: 2 })
     });
 
+    // Poll the backend until the VAPI webhook finishes LLM analysis and POSTs it over
+    const pollInterval = setInterval(async () => {
+        try {
+            const statusRes = await fetch(`/api/session-status?session_id=${sessionId}`);
+            const statusData = await statusRes.json();
+            if (statusData.transcript_ready) {
+                clearInterval(pollInterval);
+                hideTyping();
+                appendSystemMessage("Transcript analyzed. Agent 3 is joining the chat...");
+                showTyping();
+                sendBackendInitAgent3();
+            }
+        } catch (err) {
+            console.error("Polling error:", err);
+        }
+    }, 3000);
+
+    // Fallback: If webhook fails or ngrok is down, launch Agent 3 after 45s (it will gracefully use the fake initial context)
     setTimeout(() => {
+        clearInterval(pollInterval);
+        hideTyping();
+        showTyping();
         sendBackendInitAgent3();
-    }, 2000);
+    }, 45000);
 }
 
 async function sendBackendInitAgent3() {

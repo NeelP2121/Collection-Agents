@@ -1,6 +1,7 @@
 services:
   temporal:
     image: temporalio/admin-tools:1.26.2
+    entrypoint: []
     command: temporal server start-dev --ip 0.0.0.0 --ui-port 8080 --ui-ip 0.0.0.0
     ports:
       - "7233:7233"
@@ -27,13 +28,6 @@ services:
       - DB_PATH=/data/collections_agents.db
     volumes:
       - db-data:/data
-    secrets:
-      - anthropic_key
-      - openai_key
-      - google_key
-      - vapi_key
-      - vapi_phone_id
-      - vapi_public_key
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import temporalio; print(\"ok\")'"]
       interval: 30s
@@ -54,17 +48,10 @@ services:
     environment:
       - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
       - TEMPORAL_HOST=temporal:7233
-      - SERVER_URL=http://voice-webhook:8001
+      - SERVER_URL=${SERVER_URL:-http://voice-webhook:8001}
       - DB_PATH=/data/collections_agents.db
     volumes:
       - db-data:/data
-    secrets:
-      - anthropic_key
-      - openai_key
-      - google_key
-      - vapi_key
-      - vapi_phone_id
-      - vapi_public_key
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8001/health || exit 1"]
       interval: 10s
@@ -85,16 +72,10 @@ services:
     environment:
       - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
       - TEMPORAL_HOST=temporal:7233
+      - SERVER_URL=${SERVER_URL:-http://localhost:8001}
       - DB_PATH=/data/collections_agents.db
     volumes:
       - db-data:/data
-    secrets:
-      - anthropic_key
-      - openai_key
-      - google_key
-      - vapi_key
-      - vapi_phone_id
-      - vapi_public_key
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 10s
@@ -104,17 +85,3 @@ services:
 
 volumes:
   db-data:
-
-secrets:
-  anthropic_key:
-    file: secrets/anthropic_key.txt
-  openai_key:
-    file: secrets/openai_key.txt
-  google_key:
-    file: secrets/google_key.txt
-  vapi_key:
-    file: secrets/vapi_key.txt
-  vapi_phone_id:
-    file: secrets/vapi_phone_id.txt
-  vapi_public_key:
-    file: secrets/vapi_public_key.txt

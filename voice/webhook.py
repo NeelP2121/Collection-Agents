@@ -176,7 +176,7 @@ def _sse_stream(call_id: str, content: str):
 # ──────────────────────────────────────────────────────────────
 
 @app.post("/vapi-webhook")
-async def webhook(request: Request):
+async def webhook(request: Request, web_session_id: str = None):
     """
     Handle VAPI server messages.
 
@@ -206,7 +206,7 @@ async def webhook(request: Request):
 
     # ── End of call report — the critical event ──
     if msg_type == "end-of-call-report":
-        return await _handle_end_of_call(message)
+        return await _handle_end_of_call(message, web_session_id)
 
     # ── Hang notification ──
     if msg_type == "hang":
@@ -216,7 +216,7 @@ async def webhook(request: Request):
     return {"status": "ignored", "type": msg_type}
 
 
-async def _handle_end_of_call(message: Dict) -> JSONResponse:
+async def _handle_end_of_call(message: Dict, query_web_session_id: str = None) -> JSONResponse:
     """
     Process end-of-call-report:
       1. Extract transcript from VAPI payload
@@ -228,20 +228,21 @@ async def _handle_end_of_call(message: Dict) -> JSONResponse:
     call_id = call.get("id", "unknown")
     metadata = call.get("metadata", {})
     workflow_id = metadata.get("temporal_workflow_id")
+    web_session_id = query_web_session_id or metadata.get("web_session_id")
     ended_reason = message.get("endedReason", call.get("endedReason", "unknown"))
 
     # Extract transcript — VAPI provides it in multiple formats
     transcript = _extract_transcript(message)
 
     logger.info(
-        f"End-of-call: call={call_id}, workflow={workflow_id}, "
+        f"End-of-call: call={call_id}, workflow={workflow_id}, session={web_session_id}, "
         f"reason={ended_reason}, transcript_len={len(transcript)}"
     )
 
-    if not workflow_id:
-        logger.error("No temporal_workflow_id in call metadata — cannot signal")
+    if not workflow_id and not web_session_id:
+        logger.error("No temporal_workflow_id or web_session_id in call metadata — cannot signal")
         return JSONResponse(
-            {"status": "error", "message": "missing workflow_id"},
+            {"status": "error", "message": "missing workflow_id or web_session_id"},
             status_code=400,
         )
 
@@ -291,6 +292,30 @@ async def _handle_end_of_call(message: Dict) -> JSONResponse:
     if call_record:
         result["inline_compliance_violations"] = call_record.compliance_violations
         store.mark_ended(call_id, result["outcome"], transcript)
+
+    # If this is a web demo session, post back to the web portal instead of Temporal
+    if web_session_id:
+        import httpx
+        try:
+            # We use httpx inside the Async method to cleanly POST the json to the FastAPI portal
+            async with httpx.AsyncClient() as client:
+                await client.post(
+                    "http://web-portal:8000/api/save-web-transcript",
+                    json={"session_id": web_session_id, "analysis_result": result},
+                    timeout=10.0
+                )
+            logger.info(f"Successfully posted transcript analysis for web session {web_session_id}")
+            return JSONResponse({
+                "status": "success",
+                "signaled_web_session": web_session_id,
+                "outcome": result["outcome"],
+            })
+        except Exception as e:
+            logger.error(f"Failed to POST transcript to web-portal: {e}")
+            return JSONResponse(
+                {"status": "error", "message": str(e), "outcome": result["outcome"]},
+                status_code=500,
+            )
 
     # Signal Temporal workflow (with retry — transient network failures are common)
     max_signal_attempts = 3
