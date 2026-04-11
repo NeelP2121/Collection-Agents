@@ -47,9 +47,9 @@ LLM_MODELS = {
     },
     "gemini": {
         "agent": "gemini-2.0-flash",
-        "evaluation": "gemini-2.5-pro-preview-03-25",
-        "improver": "gemini-2.5-pro-preview-03-25",
-        "godel": "gemini-2.5-pro-preview-03-25"
+        "evaluation": "gemini-2.0-flash",
+        "improver": "gemini-2.0-flash",
+        "godel": "gemini-3.1-pro-preview"
     },
     "ollama": {
         "agent":      os.getenv("OLLAMA_MODEL", "gemma4"),
@@ -81,7 +81,8 @@ MODEL_PRICING = {
     "gpt-4o":                     {"input": 5.00,  "output": 15.00},
     # Gemini
     "gemini-2.0-flash":               {"input": 0.10,  "output": 0.40},
-    "gemini-2.5-pro-preview-03-25":   {"input": 1.25,  "output": 10.00},
+    "gemini-2.5-pro":                 {"input": 1.25,  "output": 10.00},
+    "gemini-2.5-flash":               {"input": 0.10,  "output": 0.40},
     "gemini-3.1-flash":               {"input": 0.10,  "output": 0.40},
     "gemini-3.1-pro":                 {"input": 1.25,  "output": 10.00},
     # Local (free)

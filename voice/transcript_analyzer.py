@@ -18,46 +18,27 @@ from utils.config import get_model
 
 logger = logging.getLogger(__name__)
 
-ANALYSIS_SYSTEM_PROMPT = """You are a debt collection call analyst. Analyze the following voice call transcript between a Resolution Agent and a Borrower.
+ANALYSIS_SYSTEM_PROMPT = """You are a debt collection call analyst. Analyze the following voice call transcript.
 
-Extract structured information about the call outcome. Be precise and factual — only report what is explicitly stated or clearly implied in the transcript.
+DETERMINE THE OUTCOME:
+- deal_agreed: The borrower explicitly said "Yes", "I agree", "I'll do that", or "Deal" to a specific offer.
+- no_deal: The borrower rejected all offers, said they cannot pay, or ended the call without agreement.
+- hardship_referral: The borrower requested help due to financial crisis.
+- stop_contact: The borrower requested no further calls.
 
-Return ONLY valid JSON with this exact schema:
+CRITICAL: Do NOT mark "deal_agreed" if the agent merely offered a discount that the borrower rejected. You MUST see explicit borrower acceptance.
+
+Return ONLY valid JSON:
 {
-    "outcome": "deal_agreed | no_deal | hardship_referral | stop_contact | call_dropped | max_turns_exceeded",
-    "outcome_reasoning": "Brief explanation of why this outcome was determined",
+    "outcome": "deal_agreed | no_deal | hardship_referral | stop_contact",
+    "outcome_reasoning": "Explain why - e.g. 'Borrower rejected 3500 and said they won't pay now'",
     "deal_terms": {
-        "type": "lump_sum | payment_plan | hardship_referral | null",
-        "amount": <number or null>,
-        "discount_pct": <number or null>,
-        "monthly_payment": <number or null>,
-        "duration_months": <number or null>,
-        "deadline": "<string or null>"
+        "type": "lump_sum | payment_plan | null",
+        "amount": <number or null>
     },
-    "offers_made": [
-        {"type": "lump_sum | payment_plan | hardship", "details": "...", "borrower_response": "accepted | rejected | deferred | ignored"}
-    ],
-    "objections": [
-        {"objection": "...", "agent_response": "...", "resolved": true/false}
-    ],
-    "borrower_state": {
-        "cooperative": true/false,
-        "emotional_distress": true/false,
-        "hardship_claimed": true/false,
-        "stop_contact_requested": true/false,
-        "ability_to_pay": "full | partial | none | unclear"
-    },
-    "compliance_flags": [
-        {"rule": "...", "concern": "...", "severity": "critical | warning"}
-    ],
-    "key_quotes": {
-        "borrower": ["Most significant borrower statements"],
-        "agent": ["Most significant agent statements"]
-    },
-    "turns": <number of conversational turns>
+    ...
 }
-
-If a field cannot be determined from the transcript, use null. Do not fabricate information."""
+"""
 
 
 def analyze_transcript(transcript: str, borrower_context: Dict[str, Any] = None) -> Dict[str, Any]:
@@ -98,6 +79,10 @@ Analyze this call and return the JSON structure specified."""
             context_category="transcript_analysis",
         )
 
+        if not response:
+            logger.error("LLM returned empty response for transcript analysis.")
+            return _fallback_analysis(transcript)
+
         # Parse JSON from response (handle markdown wrapping and trailing text)
         clean = response.strip()
         if clean.startswith("```"):
@@ -126,6 +111,7 @@ Analyze this call and return the JSON structure specified."""
 def _fallback_analysis(transcript: str) -> Dict[str, Any]:
     """Rule-based fallback when LLM analysis fails."""
     lower = transcript.lower()
+    import re
 
     if any(kw in lower for kw in ["agree", "deal", "yes", "accept", "i'll take"]):
         outcome = "deal_agreed"
@@ -136,10 +122,33 @@ def _fallback_analysis(transcript: str) -> Dict[str, Any]:
     else:
         outcome = "no_deal"
 
+    # Basic regex to find dollar amounts if we're in a deal outcome
+    deal_terms = None
+    if outcome == "deal_agreed":
+        # Look for numbers that look like money: $3,500, 3500 dollars, 3500.00
+        # Pattern: Optional $, then digits with optional commas/dots, then optional ' dollars'
+        amounts = re.findall(r"(?:\$?\b(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\b(?:\s?dollars)?|(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s?dollars)", transcript, re.IGNORECASE)
+        
+        # amounts will be a list of tuples due to multiple groups
+        flat_amounts = [a for t in amounts for a in t if a]
+        
+        if flat_amounts:
+            try:
+                # The last mention is usually the final agreed amount
+                amt_str = flat_amounts[-1].replace(",", "")
+                deal_terms = {
+                    "type": "lump_sum",
+                    "amount": float(amt_str),
+                    "discount_pct": None,
+                    "deadline": None
+                }
+            except:
+                pass
+
     return {
         "outcome": outcome,
         "outcome_reasoning": "Determined by keyword fallback (LLM analysis failed)",
-        "deal_terms": None,
+        "deal_terms": deal_terms,
         "offers_made": [],
         "objections": [],
         "borrower_state": {

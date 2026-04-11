@@ -31,13 +31,32 @@ app.mount("/static", StaticFiles(directory="frontend"), name="static")
 sessions = {}
 
 def _init_demo_session(session_id: str) -> None:
+    # Default fallback data
+    demo_data = {
+        "name": "John Doe",
+        "phone": "+10000000000",
+        "ssn_last_4": "0000",
+        "balance": 4000.0
+    }
+    
+    # Try to load from demo_user.json
+    try:
+        import json
+        demo_file_path = os.path.join(os.path.dirname(__file__), "demo_user.json")
+        if os.path.exists(demo_file_path):
+            with open(demo_file_path, "r") as f:
+                loaded_data = json.load(f)
+                demo_data.update(loaded_data)
+    except Exception as e:
+        print(f"Failed to load demo_user.json: {e}")
+
     sessions[session_id] = {
         "messages": [],
         "phase": 1,
         "borrower_context": BorrowerContext(
-            name="John Doe",
-            phone="+10000000000",
-            balance=4000.0,
+            name=demo_data["name"],
+            phone=demo_data["phone"],
+            balance=float(demo_data["balance"]),
             hardship_detected=False,
             agent2_summary={
                 "prior_outcome": "no_deal",
@@ -50,6 +69,7 @@ def _init_demo_session(session_id: str) -> None:
                 {"offer_type": "lump_sum", "details": "25% discount"}
             ],
         ),
+        "demo_data": demo_data,
         "agent2_handoff": "Borrower failed to accept terms smoothly over the phone.",
         "transcript_ready": False,
     }
@@ -77,7 +97,17 @@ async def handle_chat(req: ChatRequest):
     session["messages"].append({"role": "user", "content": req.message})
 
     if req.phase == 1:
-        sys_prompt = AGENT1_PROMPT
+        ctx: BorrowerContext = session.get("borrower_context")
+        demo_data = session.get("demo_data", {})
+        balance = ctx.balance if ctx else 4000.0
+        ssn = demo_data.get("ssn_last_4", "0000")
+        
+        # Inject the balance and verification details into the system prompt
+        sys_prompt = AGENT1_PROMPT + (
+            f"\n\nCRITICAL INSTRUCTION: The borrower's outstanding balance is ${balance:,.2f}. "
+            f"Their identity should be verified using the last 4 digits of their SSN: {ssn}. "
+            "Before transferring them to the resolution team, you MUST explicitly state their outstanding balance."
+        )
         try:
             response_text = call_llm(
                 system=sys_prompt,
@@ -108,19 +138,32 @@ async def handle_chat(req: ChatRequest):
         # Build the system prompt exactly like how Agent 3 natively does
         if ctx:
             import json
-            guarded_handoff = json.dumps(ctx.agent2_summary)
+            handoff = ctx.agent2_summary or {}
+            guarded_handoff = json.dumps(handoff)
             sys_prompt = AGENT3_PROMPT + f"\n\nCONTEXT FROM PRIOR INTERACTIONS:\n{guarded_handoff}"
             
-            outcome = ctx.agent2_summary.get("prior_outcome")
-            if outcome == "deal_agreed":
+            outcome = str(handoff.get("prior_outcome", "")).lower()
+            deal = handoff.get("deal_terms") or {}
+            
+            # Robust deal detection: Must have 'agree' or 'deal' in outcome AND not be 'no_deal'
+            is_deal = ("agree" in outcome or "deal_agreed" in outcome) and "no_deal" not in outcome
+            
+            if is_deal and deal.get("amount"):
+                amount = deal.get('amount')
+                deal_desc = f"a settlement of ${amount:,.2f}"
+                
                 sys_prompt += (
-                    "\n\nCRITICAL INSTRUCTION: The borrower JUST ACCEPTED a deal over the phone! "
-                    "DO NOT threaten them or offer a new 20% discount. Warmly congratulate them, "
-                    "recite the exact deal terms reached in the prior conversation, and explain that "
-                    "payment instructions will be mailed to them."
+                    f"\n\nCRITICAL INSTRUCTION: The borrower JUST ACCEPTED a deal ({deal_desc}) over the phone! "
+                    "DO NOT THREATEN THEM. DO NOT offer a new discount. "
+                    "DO NOT USE PLACEHOLDERS like [AMOUNT] or [DATE]. "
+                    "YOUR ONLY TASK is to: "
+                    "1. Warmly congratulate them on resolving their debt. "
+                    f"2. Confirm the exact terms reached: {deal_desc}. "
+                    "3. Explain that a formal agreement and payment instructions will be emailed to them immediately. "
+                    "4. Be professional and supportive."
                 )
             else:
-                sys_prompt += f"\n\nINSTRUCTION: The final balance is ${ctx.balance:,.2f}. Offer a 20% discount as a final lump sum if paid within 7 days."
+                sys_prompt += f"\n\nINSTRUCTION: No deal was reached. The final balance is ${ctx.balance:,.2f}. Offer a 20% discount as a final lump sum if paid within 7 days. Be firm about the consequences of non-payment (credit reporting, legal referral)."
         else:
             sys_prompt = AGENT3_PROMPT + f"\n\nPREVIOUS CONTEXT:\n{session['agent2_handoff']}"
 
@@ -160,23 +203,42 @@ async def get_vapi_config(session_id: str = ""):
     Context from Agent 1's conversation is injected into the assistant system prompt.
     """
     context_str = ""
+    balance = 4000.0
+    
     if session_id and session_id in sessions:
-        history = sessions[session_id].get("messages", [])
+        session = sessions[session_id]
+        history = session.get("messages", [])
         # Summarise last few turns for the voice agent (keep under 500 chars)
         excerpt = " | ".join(
             f"{m['role'].upper()}: {m['content'][:120]}" for m in history[-6:]
         )
         context_str = excerpt[:500]
+        
+        ctx = session.get("borrower_context")
+        if ctx:
+            balance = ctx.balance
 
+    # Calculate settlement options to provide to the voice agent
+    lump_sum_discount = 0.30
+    lump_sum_amount = balance * (1 - lump_sum_discount)
+    payment_plan_months = 6
+    payment_plan_monthly = balance / payment_plan_months
+
+    # Explicitly define the system prompt for the override to inject dynamic variables
     system_prompt = (
         "You are the Resolution Voice Agent for a debt collection company. "
-        "You are a transactional dealmaker.\n"
-        "The current outstanding balance is $4,000.00.\n"
+        "You are a transactional dealmaker.\n\n"
+        f"BORROWER ACCOUNT BALANCE: ${balance:,.2f}\n\n"
+        "SETTLEMENT OPTIONS YOU MUST OFFER:\n"
+        f"1. LUMP SUM: ${lump_sum_amount:,.2f} ({int(lump_sum_discount*100)}% discount) if paid within 7 days.\n"
+        f"2. PAYMENT PLAN: ${payment_plan_monthly:,.2f} per month for {payment_plan_months} months.\n\n"
         f"CONTEXT FROM PRIOR CHAT:\n{context_str}\n\n"
         "INSTRUCTIONS:\n"
-        "1. OPENING: Reference the prior chat interaction.\n"
+        "1. OPENING: Reference the prior chat interaction and explicitly state their balance.\n"
         "2. NO RE-VERIFICATION: Do not re-ask for identity.\n"
-        "3. NEGOTIATE SETTLEMENT AND LOCK IN DEAL."
+        "3. NEGOTIATE: Present the Lump Sum option first. If rejected, offer the Payment Plan. "
+        "DO NOT use generic placeholders like '5000 dollars' or 'calculate amount'. USE THE EXACT NUMBERS PROVIDED ABOVE.\n"
+        "4. COMMITMENT: If they agree, confirm the exact amount and tell them a settlement agreement will be sent to their email."
     )
 
     raw_server_url = os.getenv("SERVER_URL", "")
@@ -190,26 +252,31 @@ async def get_vapi_config(session_id: str = ""):
 
     assistant_config = {
         "name": "Resolution Agent",
-        "firstMessage": "Hi, this is the resolution team. I'm following up on your account.",
+        "firstMessage": f"Hi, this is the resolution team calling about your ${balance:,.2f} balance. I understand you were just speaking with our team.",
         "model": {
             "provider": "custom-llm",
             "url": custom_llm_url,
             "model": get_model("agent"),
             "systemPrompt": system_prompt,
         },
-        "voice": {
-            "provider": "playht",
-            "voiceId": "jennifer",
-        },
-        "transcriber": {
-            "provider": "deepgram",
-            "model": "nova-2",
-            "language": "en",
-        },
         "metadata": {
             "web_session_id": session_id
         }
     }
+    
+    # We only override the transcriber and voice if not using an assistant ID, 
+    # to avoid blowing away the dashboard settings for those components.
+    if not VAPI_ASSISTANT_ID:
+        assistant_config["voice"] = {
+            "provider": "playht",
+            "voiceId": "jennifer",
+        }
+        assistant_config["transcriber"] = {
+            "provider": "deepgram",
+            "model": "nova-2",
+            "language": "en",
+        }
+
     if webhook_url:
         assistant_config["serverUrl"] = webhook_url
 
@@ -267,11 +334,14 @@ async def save_web_transcript(req: WebDemoTranscriptRequest):
     if req.session_id in sessions:
         ctx: BorrowerContext = sessions[req.session_id]["borrower_context"]
         r = req.analysis_result
+        print(f"DEBUG: Saving transcript for session {req.session_id}. Outcome: {r.get('outcome')}, Deal: {r.get('deal_terms')}")
         ctx.agent2_summary = {
             "prior_outcome": r.get("outcome", "no_deal"),
             "offers_rejected": r.get("offers_made", []),
+            "offers_accepted": [r.get("deal_terms")] if r.get("deal_terms") else [],
             "objections": r.get("objections", []),
             "transcript_summary": r.get("outcome_reasoning", ""),
+            "deal_terms": r.get("deal_terms"),
         }
         sessions[req.session_id]["transcript_ready"] = True
     return {"status": "ok"}
@@ -293,9 +363,15 @@ async def forward_vapi_webhook(request: Request):
     """
     try:
         body = await request.json()
+        query_params = dict(request.query_params)
         import httpx
         async with httpx.AsyncClient() as client:
-            resp = await client.post("http://voice-webhook:8001/vapi-webhook", json=body, timeout=30.0)
+            resp = await client.post(
+                "http://voice-webhook:8001/vapi-webhook", 
+                json=body, 
+                params=query_params,
+                timeout=30.0
+            )
             return JSONResponse(status_code=resp.status_code, content=resp.json())
     except Exception as e:
         logger.error(f"Failed to forward webhook from web-portal to voice-webhook: {e}")

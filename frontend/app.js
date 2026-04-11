@@ -211,13 +211,18 @@ async function startVapiCall() {
         });
 
         if (callActivityLabel) callActivityLabel.innerText = 'Connecting to VAPI...';
-        // Prefer a pre-built assistant ID (more reliable); fall back to inline config
-        const startArg = config.assistant_id || config.assistant;
-        console.log('[VAPI] calling start() with', config.assistant_id ? `assistant_id: ${config.assistant_id}` : 'inline config', config.assistant);
+        console.log('[VAPI] calling start() with', config.assistant_id ? `assistant_id: ${config.assistant_id}` : 'inline config', 'and overrides:', !!config.assistant);
         const timeout = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('VAPI connection timed out after 15s')), 15000)
         );
-        await Promise.race([vapiInstance.start(startArg), timeout]);
+        
+        // Pass BOTH the ID (for base config) and the inline object (for overrides)
+        if (config.assistant_id) {
+            await Promise.race([vapiInstance.start(config.assistant_id, config.assistant), timeout]);
+        } else {
+            await Promise.race([vapiInstance.start(config.assistant), timeout]);
+        }
+        
         console.log('[VAPI] start() resolved');
 
     } catch (err) {

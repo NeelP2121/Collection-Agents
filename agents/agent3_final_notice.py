@@ -51,59 +51,81 @@ class FinalNoticeAgent(BaseAgent):
         }
 
         # Build narrative-continuous opening that references prior interactions
-        voice_outcome = handoff_summary.get("prior_outcome") or handoff_summary.get("outcome", "")
-        prior_offers = handoff_summary.get("offers_rejected", offers_made) or offers_made
-        prior_objections = handoff_summary.get("objections", [])
-
-        continuity_parts = [
-            "I am an AI agent and this conversation is being recorded. "
-            "This is an attempt to collect a debt and any information obtained "
-            "will be used for that purpose."
-        ]
-
-        if voice_outcome == "no_deal" and prior_offers:
-            offer_labels = []
-            for o in prior_offers[:3]:
-                if isinstance(o, str):
-                    offer_labels.append(o)
-                elif isinstance(o, dict):
-                    offer_labels.append(o.get("type", "settlement option"))
-            continuity_parts.append(
-                f"Following up on our phone call — I understand you were unable to "
-                f"reach an agreement on the options discussed ({', '.join(offer_labels)})."
+        voice_outcome = str(handoff_summary.get("prior_outcome", handoff_summary.get("outcome", ""))).lower()
+        deal = handoff_summary.get("deal_terms") or {}
+        
+        # Robust deal detection: Must have 'agree' or 'deal' in outcome AND not be 'no_deal'
+        is_deal = ("agree" in voice_outcome or "deal_agreed" in voice_outcome) and "no_deal" not in voice_outcome
+        
+        if is_deal and deal.get("amount"):
+            amount = deal.get('amount')
+            deal_desc = f"a settlement of ${amount:,.2f}"
+            resolved = True # Mark as resolved to trigger success message logic
+            
+            sys_prompt = self.system_prompt + (
+                f"\n\nCRITICAL INSTRUCTION: The borrower JUST ACCEPTED a deal ({deal_desc}) over the phone! "
+                "DO NOT THREATEN THEM. DO NOT offer a new discount. "
+                "YOUR ONLY TASK is to: "
+                "1. Warmly congratulate them on resolving their debt. "
+                f"2. Confirm the exact terms reached: {deal_desc}. "
+                "3. Explain that a formal agreement and payment instructions will be emailed to them immediately. "
+                "4. Be professional and supportive."
             )
-            if prior_objections:
-                obj_text = "; ".join(str(o) for o in prior_objections[:2])
-                continuity_parts.append(f"Your concerns were noted: {obj_text}.")
-        elif voice_outcome:
-            continuity_parts.append(
-                "This continues from our previous chat and phone conversations about your account."
-            )
+            opening = f"I am so glad we could reach an agreement during our call. To confirm, you have agreed to {deal_desc} to resolve this account. We will send the formal agreement to your email address on file immediately."
         else:
-            continuity_parts.append(
-                "This follows up on our prior communications regarding your account."
+            prior_offers = handoff_summary.get("offers_rejected", offers_made) or offers_made
+            prior_objections = handoff_summary.get("objections", [])
+
+            continuity_parts = [
+                "I am an AI agent and this conversation is being recorded. "
+                "This is an attempt to collect a debt and any information obtained "
+                "will be used for that purpose."
+            ]
+
+            if voice_outcome == "no_deal" and prior_offers:
+                offer_labels = []
+                for o in prior_offers[:3]:
+                    if isinstance(o, str):
+                        offer_labels.append(o)
+                    elif isinstance(o, dict):
+                        offer_labels.append(o.get("type", "settlement option"))
+                continuity_parts.append(
+                    f"Following up on our phone call — I understand you were unable to "
+                    f"reach an agreement on the options discussed ({', '.join(offer_labels)})."
+                )
+                if prior_objections:
+                    obj_text = "; ".join(str(o) for o in prior_objections[:2])
+                    continuity_parts.append(f"Your concerns were noted: {obj_text}.")
+            elif voice_outcome:
+                continuity_parts.append(
+                    "This continues from our previous chat and phone conversations about your account."
+                )
+            else:
+                continuity_parts.append(
+                    "This follows up on our prior communications regarding your account."
+                )
+
+            if hardship_detected:
+                continuity_parts.append(
+                    "We are aware of the financial difficulty you mentioned, and our final "
+                    "offer reflects that."
+                )
+
+            continuity_intro = " ".join(continuity_parts)
+
+            opening = (
+                f"{continuity_intro}\n\n"
+                f"Regarding your ${balance:,.2f} outstanding balance — this is your final "
+                f"opportunity to resolve this before additional collection actions begin.\n\n"
+                f"FINAL SETTLEMENT OFFER:\n"
+                f"We can settle your debt for ${final_settlement_amount:,.2f} "
+                f"({int(final_offer['discount_pct'] * 100)}% discount) if received by {deadline}.\n\n"
+                f"If we do not receive payment or commitment by {deadline}, we will:\n"
+                f"1. Report this debt to all major credit bureaus\n"
+                f"2. Refer your account for legal proceedings\n\n"
+                f"Please respond with your decision."
             )
-
-        if hardship_detected:
-            continuity_parts.append(
-                "We are aware of the financial difficulty you mentioned, and our final "
-                "offer reflects that."
-            )
-
-        continuity_intro = " ".join(continuity_parts)
-
-        opening = (
-            f"{continuity_intro}\n\n"
-            f"Regarding your ${balance:,.2f} outstanding balance — this is your final "
-            f"opportunity to resolve this before additional collection actions begin.\n\n"
-            f"FINAL SETTLEMENT OFFER:\n"
-            f"We can settle your debt for ${final_settlement_amount:,.2f} "
-            f"({int(final_offer['discount_pct'] * 100)}% discount) if received by {deadline}.\n\n"
-            f"If we do not receive payment or commitment by {deadline}, we will:\n"
-            f"1. Report this debt to all major credit bureaus\n"
-            f"2. Refer your account for legal proceedings\n\n"
-            f"Please respond with your decision."
-        )
+            sys_prompt = self.system_prompt + f"\n\nCONTEXT FROM PRIOR INTERACTIONS:\n{guarded_handoff}"
 
         # Start with user greeting so messages alternate correctly for LLM calls
         messages = [

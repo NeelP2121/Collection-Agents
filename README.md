@@ -1,136 +1,41 @@
-# Post-Default Debt Collection AI System
+# CollectionAgents: Autonomous Debt Recovery Pipeline
 
-Three-agent debt collection pipeline with Temporal orchestration, VAPI voice integration, self-learning A/B evaluation, and Darwin-Godel meta-evaluation. Built with FDCPA compliance enforcement at every layer.
+A high-performance, autonomous debt collection system utilizing a multi-agent orchestration of LLMs (Claude/Gemini) and Temporal for long-running, stateful borrower workflows.
 
-## Quick Start
+## 🚀 The System Architecture
 
-### Option A: Docker (Recommended)
+The project is built on the **Darwin-Godel Mechanism (DGM)**, a self-optimizing loop that continuously evolves agent prompts based on successful resolutions and compliance audits.
 
-```bash
-# 1. Configure secrets
-cp .env.example .env   # Add your ANTHROPIC_API_KEY
-# Or place keys in secrets/*.txt files
+### Core Components
 
-# 2. Start everything
-docker compose up --build
+1.  **Phase 1: Assessment Agent (Chat):** Cold, clinical, and precise. Verifies identity via last 4 of SSN/Zip and assesses the borrower's ability to pay or hardship status.
+2.  **Phase 2: Resolution Agent (Voice):** A transactional dealmaker integrated with **VAPI**. Conducts real-time voice negotiations using custom-LLM endpoints and dynamic assistant overrides.
+3.  **Phase 3: Final Notice Agent (Chat):** Consequence-driven and deadline-focused. Closes the loop by confirming agreements or stating legal/credit reporting consequences.
 
-# 3. Access
-# Web Portal:     http://localhost:8000
-# Temporal UI:    http://localhost:8080
-# Voice Webhook:  http://localhost:8001
-```
+## 🛠 Engineering Principles
 
-All services start in ~30 seconds. The worker waits for Temporal to be healthy before connecting.
+*   **Temporal Handoffs:** Uses `wait_condition` and Webhook signals to manage voice calls. This ensures the system is crash-proof; if the server dies, the call and the workflow state remain alive in Temporal.
+*   **YAML DNA:** Agent personalities are stored in `registry/active_prompts.yaml`. The learning loop mutates this registry rather than code, ensuring zero syntax breaks during evolution.
+*   **TikToken Gate:** Strict local enforcement of a 2000-token context window per agent using `cl100k_base` to prevent cost overruns and context hallucination.
+*   **JSON Handoff Ledger:** Distills messy chat history into a structured <500 token JSON ledger for Agent-to-Agent communication, stripping out conversational noise.
+*   **Cognitive Tiering:** Routes high-volume simulation/evaluation tasks to Flash models while reserving reasoning models (Sonnet/Pro) for "Godel" level audits and strategy.
 
-### Option B: Local
+## 🧠 Darwin-Godel Mechanism (DGM)
 
-```bash
-# 1. Temporal dev server (separate terminal)
-brew install temporal
-temporal server start-dev
+The system doesn't just evaluate agents; it audits the evaluation logic itself:
+- **Godel Monitor:** Scans for "Prompt Gaming" where agents act polite solely to trick the rubric without achieving resolution.
+- **Darwinian Evolution:** Shifts weights between *Empathy* and *Resolution Efficiency* based on success rates.
+- **Regression Check:** Ensures that improving the Assessment Agent doesn't degrade the quality of data passed to the Resolution Agent.
 
-# 2. Python environment
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
+## 🚦 Compliance & Safety
 
-# 3. Web portal
-PYTHONPATH=. python api/server.py          # http://localhost:8000
+- **Hybrid Guardrails:** Combines LLM-based sentiment analysis with "Hard" Regex checks for forbidden terms (e.g., "Arrest", "Police", "Jail").
+- **Time-Gated Activity:** Structurally prevents voice calls after 9 PM.
+- **FDCPA Compliance:** Built-in disclosures (Mini-Miranda, AI disclosure) and mandatory "Stop Contact" handling.
 
-# 4. Temporal worker (separate terminal)
-PYTHONPATH=. python -m workers.main
+## 📦 Setup & Usage
 
-# 5. Self-learning loop
-PYTHONPATH=. python run_learning_loop.py --iterations 3 --conversations 10 --seed 42
-```
-
-## Architecture
-
-```
-Borrower --> [Agent 1: Assessment/Chat] --> Handoff Ledger (500 tokens)
-                                                |
-                                                v
-             [Agent 2: Resolution/Voice] --> Handoff Ledger (500 tokens)
-                                                |
-                                                v
-             [Agent 3: Final Notice/Chat] --> Outcome
-```
-
-- Each agent: 2000-token context window, system prompt loaded from `registry/active_prompts.yaml`
-- Temporal.io orchestrates the workflow with per-activity timeouts and crash recovery
-- Voice (Agent 2) uses VAPI WebRTC with a Custom LLM endpoint (`/chat/completions`)
-- Handoff ledgers are LLM-compressed structured JSON, truncated by `tiktoken` if over 500 tokens
-
-## Self-Learning Loop
-
-```bash
-PYTHONPATH=. python run_learning_loop.py --iterations 5 --conversations 25 --seed 42
-```
-
-Real A/B evaluation pipeline:
-1. Evaluate active prompt against synthetic borrower personas (cooperative, combative, evasive, confused, distressed, financially_capable)
-2. Generate prompt variants via LLM meta-prompting
-3. Compliance-gate each variant (negation-aware FDCPA check)
-4. Evaluate variants against the same scenarios (deterministic seed)
-5. Apply 5 statistical gates: Welch's t-test (p<0.05), Cohen's d (>=0.5), mean improvement (>=15%), variance ratio (<4.0), 95% CI lower bound (>0)
-6. System-level cross-agent regression check after adoption
-7. Darwin-Godel meta-evaluation for metric gaming detection
-
-Output:
-- `evals_output/raw_scores.csv` -- per-conversation scores
-- `evals_output/decisions.csv` -- statistical decisions with p-values, effect sizes
-- `evals_output/evolution_report.md` -- full report with distributions, prompt history, cost breakdown
-
-## Darwin-Godel Demonstration
-
-```bash
-PYTHONPATH=. python demonstrate_darwin_godel.py
-```
-
-Demonstrates the meta-evaluator catching a flaw: efficiency over-weighting allows fast-but-bad agents to score competitively. The Godel layer detects this, proposes a weight correction, validates it against synthetic profiles, and widens the gap between good and bad agents by ~80%.
-
-## Run a Borrower Workflow
-
-```bash
-PYTHONPATH=. python run_workflow.py --name "Jane Doe" --phone "+15551234567" --balance 6500
-```
-
-Triggers the full 3-agent Temporal workflow: Assessment (chat) -> Resolution (voice) -> Final Notice (chat).
-
-## Project Structure
-
-```
-agents/                  # Agent implementations (BaseAgent + 3 specialized)
-temporal/                # Temporal workflow and activities
-voice/                   # VAPI voice integration (webhook, handler, transcript analyzer)
-learning/                # Self-learning loop
-  learning_loop.py       #   A/B evaluation orchestrator
-  evaluator.py           #   Synthetic conversation evaluator
-  statistics.py          #   Welch's t-test, Cohen's d, CI, variance ratio
-  judge.py               #   Per-agent rubric scoring
-  meta_evaluator.py      #   Darwin layer (weight introspection)
-  godel_monitor.py       #   Godel layer (blind spot detection)
-  prompt_improver.py     #   LLM-powered variant generation
-  data_export.py         #   CSV writer + evolution report generator
-compliance/              # FDCPA rule enforcement (8 rules from assignment spec)
-utils/                   # LLM abstraction, cost tracking, database, config
-api/                     # FastAPI web portal
-frontend/                # Borrower-facing chat/voice UI
-registry/                # active_prompts.yaml (agent system prompts)
-evals_output/            # CSV data + evolution report (generated)
-```
-
-## Key Technical Decisions
-
-| Decision | Why |
-|----------|-----|
-| Welch's t-test (not Student's) | Baseline and variant may have different variances |
-| Cohen's d >= 0.5 threshold | Reject statistically significant but trivially small improvements |
-| 5 independent adoption gates | Conservative: cost of bad prompt > cost of missing marginal gain |
-| Per-agent judge rubrics | Assessment needs identity verification; Resolution needs offer quality |
-| Negation-aware compliance check | "Do not threaten" should pass; "threaten the borrower" should fail |
-| Rule registry (not source rewriting) | Godel rules stored in JSON, loaded at evaluation time, validated before commit |
-| Deterministic seed | Same seed = same scenario order = reproducible results |
-
-## Budget
-
-$20 total LLM ceiling. Agent conversations use Haiku (~$0.005/conversation). Judge and meta-eval use Sonnet (~$0.025/call). Godel monitor uses Opus for highest reasoning quality. Thread-safe `CostTracker` singleton enforces the limit and stops the loop gracefully when budget is insufficient for the next iteration.
+1.  **Configure Environment:** Copy `.env.example` to `.env` and provide your Anthropic/Google/VAPI keys.
+2.  **Run the Web UI:** `python -m api.server` to launch the borrower portal on port 8000.
+3.  **Start Temporal Worker:** `python -m workers.main` to process background workflows.
+4.  **Launch Learning Loop:** `python run_learning_loop.py` to start the DGM evolution process.

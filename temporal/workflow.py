@@ -197,13 +197,6 @@ class BorrowerWorkflow:
         # Check voice outcome for early exits
         voice_outcome = agent2_result.get("outcome", "no_deal")
 
-        if voice_outcome == "deal_agreed":
-            borrower_context.final_outcome = "resolved_voice"
-            borrower_context.advance_stage("completed")
-            return {"status": "resolved_voice", "phase": "resolution",
-                    "deal_terms": agent2_result.get("deal_terms"),
-                    "borrower_context": borrower_context.to_dict()}
-
         borrower_state = agent2_result.get("borrower_state", {})
         if borrower_state.get("stop_contact_requested") or voice_outcome == "stop_contact":
             borrower_context.mark_stop_contact()
@@ -219,6 +212,7 @@ class BorrowerWorkflow:
                     "borrower_context": borrower_context.to_dict()}
 
         # ── Workflow-level no-response retry ────────────────────
+        # (Retry logic remains same, but if it eventually gets a deal_agreed, it will fall through to Phase 3)
         # If voice outcome is "no_response" (borrower didn't pick up),
         # retry up to 3 times with a delay between attempts.
         if voice_outcome == "no_response" and self.no_response_attempts < _MAX_NO_RESPONSE_RETRIES:
@@ -262,13 +256,6 @@ class BorrowerWorkflow:
             borrower_context.agent2_offers_made = agent2_result.get("offers_made", [])
 
             # Re-check ALL early exits after retry (not just deal_agreed)
-            if voice_outcome == "deal_agreed":
-                borrower_context.final_outcome = "resolved_voice"
-                borrower_context.advance_stage("completed")
-                return {"status": "resolved_voice", "phase": "resolution",
-                        "deal_terms": agent2_result.get("deal_terms"),
-                        "borrower_context": borrower_context.to_dict()}
-
             retry_borrower_state = agent2_result.get("borrower_state", {})
             if retry_borrower_state.get("stop_contact_requested") or voice_outcome == "stop_contact":
                 borrower_context.mark_stop_contact()
