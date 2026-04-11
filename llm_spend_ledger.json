@@ -1,7 +1,7 @@
 {
-  "total_spend_usd": 0.8929281999999991,
-  "total_input_tokens": 221703,
-  "total_output_tokens": 53914,
+  "total_spend_usd": 0.9439439000000018,
+  "total_input_tokens": 554542,
+  "total_output_tokens": 98824,
   "breakdown_by_model": {
     "gemma4": {
       "tokens": 6472,
@@ -12,8 +12,8 @@
       "cost": 0.0
     },
     "gemini-2.0-flash": {
-      "tokens": 48818,
-      "cost": 0.0075536
+      "tokens": 424254,
+      "cost": 0.05856930000000001
     },
     "claude-haiku-4-5-20251001": {
       "tokens": 90302,
@@ -26,36 +26,40 @@
     "claude-opus-4-6": {
       "tokens": 1945,
       "cost": 0.032055
+    },
+    "gemini-3.1-pro-preview": {
+      "tokens": 2313,
+      "cost": 0.0
     }
   },
   "breakdown_by_category": {
     "general": {
-      "tokens": 69296,
-      "cost": 0.2405902
+      "tokens": 100404,
+      "cost": 0.24630020000000002
     },
     "meta_evaluation_introspection": {
-      "tokens": 6119,
-      "cost": 0.028665200000000002
+      "tokens": 6524,
+      "cost": 0.028736300000000003
     },
     "synthetic_borrower": {
-      "tokens": 91170,
-      "cost": 0.31140860000000004
+      "tokens": 231904,
+      "cost": 0.3296228999999995
     },
     "voice_resolution": {
-      "tokens": 65546,
-      "cost": 0.06872799999999998
+      "tokens": 95856,
+      "cost": 0.07250780000000001
     },
     "transcript_analysis": {
       "tokens": 7477,
       "cost": 0.064503
     },
     "assessment": {
-      "tokens": 21945,
-      "cost": 0.029143199999999998
+      "tokens": 133471,
+      "cost": 0.044047900000000126
     },
     "prompt_improvement": {
-      "tokens": 9427,
-      "cost": 0.108189
+      "tokens": 18228,
+      "cost": 0.11101039999999998
     },
     "debug": {
       "tokens": 293,
@@ -66,16 +70,20 @@
       "cost": 0.000912
     },
     "godel_monitor": {
-      "tokens": 1945,
+      "tokens": 4258,
       "cost": 0.032055
     },
     "godel_validation": {
-      "tokens": 1394,
-      "cost": 0.0048660000000000005
+      "tokens": 2513,
+      "cost": 0.0049938000000000005
     },
     "godel_violation_check": {
-      "tokens": 157,
-      "cost": 0.0005430000000000001
+      "tokens": 42975,
+      "cost": 0.004930700000000002
+    },
+    "compliance_prompt_check": {
+      "tokens": 8615,
+      "cost": 0.0009989
     }
   }
 }
