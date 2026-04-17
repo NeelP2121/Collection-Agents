@@ -15,16 +15,17 @@ from models.learning_state import PromptVariant, LearningInsight
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-PROMPT_ANALYSIS_SYSTEM = """You are an expert system designer analyzing debt collection AI agent performance.
-Your task: Review evaluation results and suggest the most impactful prompt improvements.
+PROMPT_ANALYSIS_SYSTEM = """You are an expert system designer optimizing debt collection AI agent prompts.
+Your task: Analyze evaluation results and produce COMPLETE rewritten prompts that improve performance.
 
 Focus on:
-1. Resolution Rate Impact: What changes would increase successful resolutions?
-2. Compliance Violations: What language or approach causes FDCPA violations?
-3. Borrower Response Patterns: What causes combative or evasive responses?
-4. Negotiation Effectiveness: What settlement strategies work best?
+1. Resolution Rate: What phrasing, tone, or strategy changes increase successful resolutions?
+2. Compliance: What language causes FDCPA violations? Ensure AI disclosure, no false threats.
+3. Borrower Handling: How should the agent adapt to combative, evasive, or distressed borrowers?
+4. Negotiation: What settlement presentation strategies work best?
 
-Provide 5 specific, actionable prompt improvements, ranked by estimated impact.
+CRITICAL: Each variation must be a COMPLETE, standalone system prompt — not a patch or appendix.
+Keep prompts concise (under 800 tokens). Make surgical, targeted changes — don't rewrite everything.
 """
 
 class PromptImprover:
@@ -83,28 +84,48 @@ class PromptImprover:
         """
         variations = []
         
-        # Build analysis request
+        # Summarize scenario failures concisely to avoid bloating the prompt
+        scenario_summary = []
+        for name, data in evaluation_results.get("scenarios", {}).items():
+            status = data.get("result", "unknown")
+            score = data.get("composite_score", "?")
+            scenario_summary.append(f"  {name}: {status} (score={score})")
+        scenario_text = "\n".join(scenario_summary[:15]) if scenario_summary else "  No scenario data available."
+
+        # Format dimension scores if available
+        dim_scores = evaluation_results.get("dimension_scores", {})
+        if dim_scores:
+            dim_text = "\n".join(f"  {dim}: {val:.2f}/1.00" for dim, val in sorted(dim_scores.items(), key=lambda x: x[1]))
+            dim_section = f"\nDIMENSION SCORES (lowest = biggest opportunity):\n{dim_text}\n"
+        else:
+            dim_section = ""
+
         analysis_request = f"""
+AGENT: {agent_name}
+
 CURRENT PROMPT:
 {current_prompt}
 
 EVALUATION RESULTS:
-- Overall Resolution Rate: {evaluation_results.get('overall_resolution_rate', 0)}%
-- Compliance Score: {evaluation_results.get('overall_compliance_score', 0)}%
-- Total Test Scenarios: {len(evaluation_results.get('scenarios', {}))}
-- Failed Scenarios: {sum(1 for s in evaluation_results.get('scenarios', {}).values() if s.get('result') != 'success')}
+- Resolution Rate: {evaluation_results.get('overall_resolution_rate', 0):.0f}%
+- Compliance Score: {evaluation_results.get('overall_compliance_score', 0):.0f}%
+- Mean Composite: {evaluation_results.get('mean_composite', 0):.3f}
+{dim_section}
+SCENARIO BREAKDOWN:
+{scenario_text}
 
-SCENARIO DETAILS:
-{json.dumps(evaluation_results.get('scenarios', {}), indent=2)}
+Generate {num_variations} COMPLETE rewritten system prompts. Each must be a standalone replacement
+for the current prompt — not a patch or appendix. Target the LOWEST scoring dimensions above.
 
-Generate {num_variations} specific prompt variations that address the failures above.
-For each variation:
-1. Identify what aspect of the current prompt needs improvement
-2. Show exactly what text should change
-3. Explain the improvement rationale
-4. Estimate impact on resolution rate
-
-Format as JSON array with objects: {{"variation_number": 1, "changes": "...", "new_prompt_section": "...", "rationale": "...", "estimated_impact": "..."}}
+Format as JSON array:
+[
+  {{
+    "variation_number": 1,
+    "full_prompt": "The complete rewritten system prompt...",
+    "change_description": "What was changed and why",
+    "rationale": "Expected impact on scores"
+  }}
+]
 """
         
         try:
@@ -131,15 +152,17 @@ Format as JSON array with objects: {{"variation_number": 1, "changes": "...", "n
                 
                 # Create PromptVariant objects
                 for i, var_data in enumerate(variations_data[:num_variations]):
+                    # Prefer full_prompt (complete rewrite) over new_prompt_section (append)
+                    prompt_text = var_data.get("full_prompt") or self._create_modified_prompt(current_prompt, var_data)
                     variant = PromptVariant(
                         variant_id=f"{agent_name}_v{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_var{i+1}",
                         agent_name=agent_name,
                         prompt_version=int(datetime.utcnow().timestamp()),
-                        prompt_text=self._create_modified_prompt(current_prompt, var_data),
+                        prompt_text=prompt_text,
                         base_prompt=current_prompt,
-                        changes=var_data.get("rationale", "Improvement variant"),
+                        changes=var_data.get("change_description", var_data.get("rationale", "Improvement variant")),
                         evaluation_metrics={
-                            "estimated_impact": var_data.get("estimated_impact", "unknown")
+                            "estimated_impact": var_data.get("rationale", "unknown")
                         }
                     )
                     variations.append(variant)

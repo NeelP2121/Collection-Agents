@@ -102,12 +102,17 @@ def call_llm(
 
         # --- ANTHROPIC ---
         elif current_provider == "anthropic":
+            # Anthropic rejects messages with empty content strings
+            clean_msgs = [
+                {**m, "content": m["content"] if m.get("content") else "(empty)"}
+                for m in messages
+            ]
             response = client.messages.create(
                 model=model,
                 max_tokens=max_tokens,
                 temperature=temperature,
                 system=system,
-                messages=messages,
+                messages=clean_msgs,
             )
 
             get_cost_tracker().record_call_cost(

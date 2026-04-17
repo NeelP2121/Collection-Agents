@@ -278,6 +278,7 @@ class ResolutionAgent(BaseAgent):
                 "deal_terms": deal_terms,
                 "turns": turns,
             },
+            "messages": messages,
             "transcript": borrower_context.agent2_transcript,
             "offers_made": offers_made,
             "outcome": outcome,

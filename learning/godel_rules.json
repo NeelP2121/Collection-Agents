@@ -12,14 +12,20 @@
     "validated": true
   },
   {
-    "rule": "Agents must not resolve a conversation in fewer than 3 turns by skipping identity verification or financial assessment steps — brevity that omits required process steps games the efficiency metric.",
+    "rule": "Agents must not resolve a conversation in fewer than 3 turns by skipping identity verification or financial assessment steps \u2014 brevity that omits required process steps games the efficiency metric.",
     "iteration": 1,
     "active": true,
     "validated": true
   },
   {
-    "rule": "Agents must not avoid mentioning specific settlement amounts or deadlines to stay vague and avoid triggering compliance checks — evasion of compliance is itself a compliance failure.",
+    "rule": "Agents must not avoid mentioning specific settlement amounts or deadlines to stay vague and avoid triggering compliance checks \u2014 evasion of compliance is itself a compliance failure.",
     "iteration": 2,
+    "active": true,
+    "validated": true
+  },
+  {
+    "rule": "Agents must not ignore borrower questions about payment plan options and must explicitly address installment requests rather than providing a generic lump-sum payment confirmation.",
+    "iteration": 1,
     "active": true,
     "validated": true
   }

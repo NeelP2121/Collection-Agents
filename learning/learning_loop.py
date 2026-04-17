@@ -95,6 +95,7 @@ class LearningLoop:
         active_prompts = _load_active_prompts()
         total_adoptions = 0
         iteration_summaries: List[Dict] = []
+        consecutive_zero_adoptions = 0
 
         for iteration in range(1, self.max_iterations + 1):
             logger.info("=" * 60)
@@ -132,7 +133,37 @@ class LearningLoop:
                     break
 
                 # 2. Generate variants (with compliance pre-flight)
-                variants = self._generate_variants(agent_key, prompt_text)
+                #    Feed baseline scores so the improver knows what's failing.
+                # Average dimension scores so the improver knows what's weak
+                dim_avgs = {}
+                for s in baseline_result.scores:
+                    for dim, val in getattr(s, 'dimension_scores', {}).items():
+                        dim_avgs.setdefault(dim, []).append(val)
+
+                baseline_eval_summary = {
+                    "overall_resolution_rate": sum(
+                        1 for s in baseline_result.scores if s.resolved
+                    ) / max(len(baseline_result.scores), 1) * 100,
+                    "overall_compliance_score": sum(
+                        s.compliance_score for s in baseline_result.scores
+                    ) / max(len(baseline_result.scores), 1) * 100,
+                    "mean_composite": baseline_result.mean_composite,
+                    "dimension_scores": {
+                        dim: round(sum(vals) / len(vals), 3)
+                        for dim, vals in dim_avgs.items()
+                    },
+                    "scenarios": {
+                        f"{s.persona}_{s.scenario_idx}": {
+                            "result": "success" if s.resolved else "failure",
+                            "composite_score": s.composite_score,
+                            "compliance_score": s.compliance_score,
+                            "violations": s.violation_count,
+                            "turns": s.turns,
+                        }
+                        for s in baseline_result.scores
+                    },
+                }
+                variants = self._generate_variants(agent_key, prompt_text, baseline_eval_summary)
                 if not variants:
                     logger.info(f"No valid variants for {agent_key}, skipping.")
                     continue
@@ -216,10 +247,17 @@ class LearningLoop:
             iteration_summaries.append(iter_summary)
             logger.info(f"Iteration {iteration} done: {iter_adoptions} adoptions, ${iter_summary['spend_usd']:.4f} spent")
 
-            # 9. Convergence check
+            # 9. Convergence check — require 2 consecutive zero-adoption iterations
+            #    A single unlucky iteration (noise) shouldn't halt learning permanently.
             if convergence:
-                logger.info("No variants adopted — converged. Stopping.")
-                break
+                consecutive_zero_adoptions += 1
+                if consecutive_zero_adoptions >= 2:
+                    logger.info(f"No adoptions for {consecutive_zero_adoptions} consecutive iterations — converged. Stopping.")
+                    break
+                else:
+                    logger.info(f"No adoptions this iteration ({consecutive_zero_adoptions}/2 before convergence). Continuing.")
+            else:
+                consecutive_zero_adoptions = 0
 
         # Generate evolution report
         cost_report = self.tracker.get_spend_report()
@@ -250,12 +288,12 @@ class LearningLoop:
         self.writer.write_scores(iteration, agent_key, result)
         return result
 
-    def _generate_variants(self, agent_key: str, current_prompt: str):
+    def _generate_variants(self, agent_key: str, current_prompt: str, evaluation_results=None):
         """Generate prompt variants and compliance-gate each one."""
         raw_variants = self.prompt_improver.generate_prompt_variations(
             agent_name=agent_key,
             current_prompt=current_prompt,
-            evaluation_results={},  # no prior results needed for generation
+            evaluation_results=evaluation_results or {},
             num_variations=self.num_variants,
         )
 
@@ -280,9 +318,18 @@ class LearningLoop:
         """Persist evaluation run and per-conversation scores to SQLite."""
         try:
             # Save prompt version
-            # Deterministic version ID: iteration + variant index (not hash)
-            variant_num = int(vr.variant_id.replace("baseline", "0").split("_")[-1] or "0", 16) % 100
-            version = iteration * 100 + variant_num
+            # Extract variant number from ID like "assessment_v20260417_053624_var1"
+            suffix = vr.variant_id.replace("baseline", "0").split("_")[-1]
+            # Handle "var1", "var2" suffixes as well as hex or numeric
+            if suffix.startswith("var"):
+                variant_num = int(suffix[3:]) if suffix[3:].isdigit() else 0
+            else:
+                try:
+                    variant_num = int(suffix, 16) % 100
+                except ValueError:
+                    variant_num = hash(suffix) % 100
+            # Use timestamp-based version to avoid UNIQUE constraint across runs
+            version = int(datetime.now(timezone.utc).timestamp()) * 10 + variant_num
             reason = decision.to_justification_string() if decision.adopted else None
             rejected = decision.to_rejection_string() if not decision.adopted else None
 

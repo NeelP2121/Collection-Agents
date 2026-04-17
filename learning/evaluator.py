@@ -10,6 +10,7 @@ real agent code — the only thing that changes is the system prompt.
 import logging
 import random
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
@@ -20,6 +21,7 @@ from agents.agent3_final_notice import FinalNoticeAgent
 from agents.base_agent import BaseAgent
 from compliance.checker import check_message_compliance
 from learning.godel_monitor import get_active_rules
+from learning.judge import score_transcript
 from models.borrower_state import BorrowerContext
 from summarizer.summarizer import Summarizer
 from tests.test_phase3_evaluation import SyntheticBorrower
@@ -43,6 +45,7 @@ class ConversationScore:
     efficiency: float             # 1.0 / max(turns, 1), capped at 1.0
     composite_score: float        # weighted combination
     transcript: List[Dict] = field(default_factory=list)  # raw messages for Gödel analysis
+    dimension_scores: Dict[str, float] = field(default_factory=dict)  # per-dimension from judge
 
 
 @dataclass
@@ -244,35 +247,48 @@ class VariantEvaluator:
         scenarios = self._make_scenario_order(num_conversations)
         tracker = get_cost_tracker()
 
-        for idx, persona in enumerate(scenarios):
-            # Budget gate
-            try:
-                tracker.check_budget()
-            except BudgetExceededError:
-                logger.warning("Budget exhausted — stopping evaluation early.")
-                result.budget_exhausted = True
-                break
+        # Run conversations in parallel — LLM calls are I/O-bound so
+        # threading gives near-linear speedup. Cap at 5 workers to avoid
+        # rate-limit pressure on the API.
+        max_workers = min(5, num_conversations)
 
-            try:
-                score = self._run_single_scenario(agent_name, prompt_text, persona, idx)
-                result.scores.append(score)
-            except BudgetExceededError:
-                logger.warning("Budget exhausted mid-conversation.")
-                result.budget_exhausted = True
-                break
-            except Exception as e:
-                logger.error(f"Scenario {idx} ({persona}) failed: {e}")
-                # Record a zero-score failure so we don't silently drop data
-                result.scores.append(ConversationScore(
-                    scenario_idx=idx,
-                    persona=persona,
-                    resolved=False,
-                    compliance_score=0.0,
-                    violation_count=0,
-                    turns=0,
-                    efficiency=0.0,
-                    composite_score=0.0,
-                ))
+        def _run_one(idx_persona):
+            idx, persona = idx_persona
+            tracker.check_budget()  # raises BudgetExceededError
+            return self._run_single_scenario(agent_name, prompt_text, persona, idx)
+
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = {
+                pool.submit(_run_one, (idx, persona)): (idx, persona)
+                for idx, persona in enumerate(scenarios)
+            }
+            for future in as_completed(futures):
+                idx, persona = futures[future]
+                try:
+                    score = future.result()
+                    result.scores.append(score)
+                except BudgetExceededError:
+                    logger.warning("Budget exhausted — stopping evaluation early.")
+                    result.budget_exhausted = True
+                    # Cancel remaining futures
+                    for f in futures:
+                        f.cancel()
+                    break
+                except Exception as e:
+                    logger.error(f"Scenario {idx} ({persona}) failed: {e}")
+                    result.scores.append(ConversationScore(
+                        scenario_idx=idx,
+                        persona=persona,
+                        resolved=False,
+                        compliance_score=0.0,
+                        violation_count=0,
+                        turns=0,
+                        efficiency=0.0,
+                        composite_score=0.0,
+                    ))
+
+        # Sort by scenario index for deterministic ordering
+        result.scores.sort(key=lambda s: s.scenario_idx)
 
         logger.info(
             f"Evaluated {agent_name} variant {variant_id}: "
@@ -305,6 +321,38 @@ class VariantEvaluator:
 
         return score
 
+    def _score_with_judge(
+        self, messages: List[Dict], agent_name: str, persona: str, idx: int
+    ) -> ConversationScore:
+        """
+        Score a conversation using the LLM judge for continuous, multi-dimensional
+        scores instead of binary resolved/not-resolved.
+        """
+        judge_result = score_transcript(messages, agent_name=agent_name)
+
+        turns = judge_result.get("turns", 0)
+        violations = len(judge_result.get("violations", []))
+        godel_v = _check_godel_violations(messages)
+        total_violations = violations + godel_v
+
+        # Use judge's composite directly — it already weights compliance,
+        # goal achievement, and efficiency via per-agent rubrics.
+        # Apply Gödel penalty on top.
+        composite = max(0.0, judge_result["composite_score"] - godel_v * 0.1)
+
+        return ConversationScore(
+            scenario_idx=idx,
+            persona=persona,
+            resolved=judge_result.get("goal_score", 0.0) >= 0.6,
+            compliance_score=judge_result.get("compliance_score", 0.0),
+            violation_count=total_violations,
+            turns=turns,
+            efficiency=judge_result.get("efficiency_score", 0.0),
+            composite_score=composite,
+            transcript=messages,
+            dimension_scores=judge_result.get("dimension_scores", {}),
+        )
+
     def _run_assessment(
         self, prompt_text: str, ctx: BorrowerContext, persona: str, idx: int
     ) -> ConversationScore:
@@ -313,24 +361,7 @@ class VariantEvaluator:
             result = agent.run_assessment_agent(ctx)
 
         messages = ctx.agent1_messages or result.get("messages", [])
-        turns = len(messages) // 2
-        violations = len(ctx.compliance_violations)
-        resolved = result["outcome"] == "completed" and ctx.identity_verified
-        compliance = compute_compliance(violations)
-        efficiency = compute_efficiency(turns)
-        godel_v = _check_godel_violations(messages)
-
-        return ConversationScore(
-            scenario_idx=idx,
-            persona=persona,
-            resolved=resolved,
-            compliance_score=compliance,
-            violation_count=violations + godel_v,
-            turns=turns,
-            efficiency=efficiency,
-            composite_score=compute_composite(resolved, compliance, efficiency, self.weights, godel_v),
-            transcript=messages,
-        )
+        return self._score_with_judge(messages, "assessment", persona, idx)
 
     def _run_resolution(
         self, prompt_text: str, ctx: BorrowerContext, persona: str, idx: int
@@ -352,24 +383,7 @@ class VariantEvaluator:
             result = agent2.run_resolution_agent(ctx)
 
         messages = result.get("messages", [])
-        turns = len(ctx.agent2_offers_made) or 1
-        violations = len(ctx.compliance_violations)
-        resolved = result["outcome"] == "deal_agreed"
-        compliance = compute_compliance(violations)
-        efficiency = compute_efficiency(turns)
-        godel_v = _check_godel_violations(messages)
-
-        return ConversationScore(
-            scenario_idx=idx,
-            persona=persona,
-            resolved=resolved,
-            compliance_score=compliance,
-            violation_count=violations + godel_v,
-            turns=turns,
-            efficiency=efficiency,
-            composite_score=compute_composite(resolved, compliance, efficiency, self.weights, godel_v),
-            transcript=messages,
-        )
+        return self._score_with_judge(messages, "resolution", persona, idx)
 
     def _run_final_notice(
         self, prompt_text: str, ctx: BorrowerContext, persona: str, idx: int
@@ -398,21 +412,4 @@ class VariantEvaluator:
             result = agent3.run_final_notice_agent(ctx)
 
         messages = result.get("messages", [])
-        turns = result.get("result", {}).get("turns", 0)
-        violations = len(ctx.compliance_violations)
-        resolved = result["outcome"] == "resolved"
-        compliance = compute_compliance(violations)
-        efficiency = compute_efficiency(turns)
-        godel_v = _check_godel_violations(messages)
-
-        return ConversationScore(
-            scenario_idx=idx,
-            persona=persona,
-            resolved=resolved,
-            compliance_score=compliance,
-            violation_count=violations + godel_v,
-            turns=turns,
-            efficiency=efficiency,
-            composite_score=compute_composite(resolved, compliance, efficiency, self.weights, godel_v),
-            transcript=messages,
-        )
+        return self._score_with_judge(messages, "final_notice", persona, idx)

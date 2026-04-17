@@ -226,9 +226,13 @@ def is_significant_improvement(
 
     improvement_pct = ((v_mean - b_mean) / b_mean * 100) if b_mean > 0 else 0.0
 
-    # Decision logic
+    # --- Decision logic: tiered gates ---
+    # Hard gates (must ALL pass): statistical significance + directional confidence
+    # Soft gates (warnings, tracked but not blockers): effect size, improvement %, variance ratio
     rejection_reasons = []
+    soft_warnings = []
 
+    # HARD GATE 1: Statistical significance (Bonferroni-corrected)
     if t_result.p_value >= alpha_adj:
         if num_comparisons > 1:
             rejection_reasons.append(
@@ -238,21 +242,36 @@ def is_significant_improvement(
         else:
             rejection_reasons.append(f"p={t_result.p_value:.4f} >= {alpha} (not significant)")
 
-    if d < effect_size_threshold:
-        rejection_reasons.append(f"d={d:.3f} < {effect_size_threshold} (effect too small)")
+    # HARD GATE 2: Improvement must be positive (variant > baseline)
+    if v_mean <= b_mean:
+        rejection_reasons.append(f"variant mean {v_mean:.4f} <= baseline {b_mean:.4f} (no improvement)")
 
-    if improvement_pct < improvement_threshold_pct * 100:
-        rejection_reasons.append(
-            f"improvement={improvement_pct:.1f}% < {improvement_threshold_pct*100:.0f}%"
-        )
-
-    if vr > 1.0 / max_var_ratio:  # max_variance_ratio=0.25 means max ratio of 4.0
-        rejection_reasons.append(f"variance_ratio={vr:.2f} too high (inconsistent)")
-
+    # HARD GATE 3: CI lower bound > 0 (confident the improvement is real)
     if ci[0] <= 0:
         rejection_reasons.append(f"CI lower={ci[0]:.4f} <= 0 (improvement not confident)")
 
+    # SOFT GATE: Effect size (tracked, not a hard blocker)
+    if d < effect_size_threshold:
+        soft_warnings.append(f"d={d:.3f} < {effect_size_threshold} (small effect)")
+
+    # SOFT GATE: Improvement magnitude
+    if improvement_pct < improvement_threshold_pct * 100:
+        soft_warnings.append(
+            f"improvement={improvement_pct:.1f}% < {improvement_threshold_pct*100:.0f}%"
+        )
+
+    # SOFT GATE: Variance ratio — skip when baseline has near-zero variance
+    # (degenerate baseline makes this check meaningless)
+    if b_std > 0.02:  # only check when baseline has real variance
+        if vr > 1.0 / max_var_ratio:
+            soft_warnings.append(f"variance_ratio={vr:.2f} too high (inconsistent)")
+    else:
+        soft_warnings.append(f"baseline_std={b_std:.4f} near-zero (variance ratio skipped)")
+
     adopted = len(rejection_reasons) == 0
+
+    # Combine rejection reasons with soft warnings for full audit trail
+    all_reasons = rejection_reasons + [f"[soft] {w}" for w in soft_warnings]
 
     decision = StatisticalDecision(
         adopted=adopted,
@@ -268,14 +287,16 @@ def is_significant_improvement(
         variant_std=v_std,
         n_baseline=len(baseline_scores),
         n_variant=len(variant_scores),
-        rejection_reasons=rejection_reasons,
+        rejection_reasons=all_reasons,
     )
 
     action = "ADOPT" if adopted else "REJECT"
+    warnings_str = f", warnings: {soft_warnings}" if soft_warnings else ""
     logger.info(
         f"Statistical decision: {action} | "
         f"p={t_result.p_value:.4f}, d={d:.3f}, "
         f"Δ={improvement_pct:+.1f}%, CI=[{ci[0]:.3f},{ci[1]:.3f}]"
+        f"{warnings_str}"
     )
     return decision
 

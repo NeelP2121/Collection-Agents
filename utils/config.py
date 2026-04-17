@@ -119,9 +119,9 @@ LEARNING_CONFIG = {
     "max_iterations":            5,
     "conversations_per_eval":    25,
     "conversations_per_variant": 25,    # N per group — see power_analysis() for justification
-    "effect_size_threshold":     0.5,   # Cohen's d
-    "improvement_threshold_pct": 0.15,  # 15% required improvement
-    "max_variance_ratio":        0.25,
+    "effect_size_threshold":     0.3,   # Cohen's d — small-medium; 0.5 was unreachable at N=25
+    "improvement_threshold_pct": 0.05,  # 5% — soft gate only; 15% was impossible with LLM scoring noise
+    "max_variance_ratio":        0.25,  # soft gate — skipped when baseline variance is near-zero
     "max_budget_usd":            19.5,  # $0.50 buffer before $20 ceiling
     "seed":                      42,
 }

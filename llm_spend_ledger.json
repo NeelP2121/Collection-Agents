@@ -1,89 +1,65 @@
 {
-  "total_spend_usd": 0.9439439000000018,
-  "total_input_tokens": 554542,
-  "total_output_tokens": 98824,
+  "total_spend_usd": 12.482804399999958,
+  "total_input_tokens": 2691762,
+  "total_output_tokens": 512429,
   "breakdown_by_model": {
-    "gemma4": {
-      "tokens": 6472,
-      "cost": 0.0
-    },
-    "gemini-2.5-flash": {
-      "tokens": 84,
-      "cost": 0.0
-    },
-    "gemini-2.0-flash": {
-      "tokens": 424254,
-      "cost": 0.05856930000000001
-    },
     "claude-haiku-4-5-20251001": {
-      "tokens": 90302,
-      "cost": 0.09908559999999995
+      "tokens": 923109,
+      "cost": 1.223258399999994
     },
     "claude-sonnet-4-6": {
-      "tokens": 127776,
-      "cost": 0.7542120000000001
+      "tokens": 2274055,
+      "cost": 11.153240999999989
     },
     "claude-opus-4-6": {
-      "tokens": 1945,
-      "cost": 0.032055
-    },
-    "gemini-3.1-pro-preview": {
-      "tokens": 2313,
-      "cost": 0.0
+      "tokens": 7027,
+      "cost": 0.10630500000000001
     }
   },
   "breakdown_by_category": {
-    "general": {
-      "tokens": 100404,
-      "cost": 0.24630020000000002
-    },
-    "meta_evaluation_introspection": {
-      "tokens": 6524,
-      "cost": 0.028736300000000003
+    "assessment": {
+      "tokens": 481528,
+      "cost": 0.6392479999999963
     },
     "synthetic_borrower": {
-      "tokens": 231904,
-      "cost": 0.3296228999999995
+      "tokens": 977032,
+      "cost": 3.912948000000008
     },
-    "voice_resolution": {
-      "tokens": 95856,
-      "cost": 0.07250780000000001
-    },
-    "transcript_analysis": {
-      "tokens": 7477,
-      "cost": 0.064503
-    },
-    "assessment": {
-      "tokens": 133471,
-      "cost": 0.044047900000000126
-    },
-    "prompt_improvement": {
-      "tokens": 18228,
-      "cost": 0.11101039999999998
-    },
-    "debug": {
-      "tokens": 293,
-      "cost": 0.0033030000000000004
-    },
-    "final_notice": {
-      "tokens": 628,
-      "cost": 0.000912
-    },
-    "godel_monitor": {
-      "tokens": 4258,
-      "cost": 0.032055
-    },
-    "godel_validation": {
-      "tokens": 2513,
-      "cost": 0.0049938000000000005
+    "judge": {
+      "tokens": 544555,
+      "cost": 2.9379929999999983
     },
     "godel_violation_check": {
-      "tokens": 42975,
-      "cost": 0.004930700000000002
+      "tokens": 301083,
+      "cost": 1.098824999999999
+    },
+    "prompt_improvement": {
+      "tokens": 25438,
+      "cost": 0.2737860000000001
     },
     "compliance_prompt_check": {
-      "tokens": 8615,
-      "cost": 0.0009989
+      "tokens": 13889,
+      "cost": 0.04872299999999999
+    },
+    "general": {
+      "tokens": 410578,
+      "cost": 2.8704300000000025
+    },
+    "voice_resolution": {
+      "tokens": 419696,
+      "cost": 0.5556128
+    },
+    "final_notice": {
+      "tokens": 21885,
+      "cost": 0.028397600000000002
+    },
+    "godel_monitor": {
+      "tokens": 7027,
+      "cost": 0.10630500000000001
+    },
+    "meta_evaluation_introspection": {
+      "tokens": 1480,
+      "cost": 0.010536
     }
   }
 }

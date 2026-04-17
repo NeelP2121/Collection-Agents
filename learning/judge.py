@@ -59,10 +59,10 @@ AGENT_RUBRICS: Dict[str, Dict] = {
             "- professional_tone: Was it clinical and factual, not emotional?\n"
             "- no_premature_negotiation: Did it avoid making settlement offers?\n"
             "- compliance: AI disclosure, recording disclosure on first message?\n\n"
-            "Return ONLY JSON:\n"
+            "Return ONLY JSON (reasoning must be under 50 words):\n"
             '{"identity_verification": 0.8, "information_gathering": 0.7, '
             '"professional_tone": 0.9, "no_premature_negotiation": 1.0, '
-            '"compliance": 0.9, "reasoning": "..."}'
+            '"compliance": 0.9, "reasoning": "brief summary"}'
         ),
         "weights": {
             "identity_verification": 0.30,
@@ -85,10 +85,10 @@ AGENT_RUBRICS: Dict[str, Dict] = {
             "- commitment_pursuit: Did it push for a concrete yes/no decision?\n"
             "- context_continuity: Did it reference prior assessment without re-asking?\n"
             "- compliance: No false threats, professional language?\n\n"
-            "Return ONLY JSON:\n"
+            "Return ONLY JSON (reasoning must be under 50 words):\n"
             '{"offer_quality": 0.8, "objection_handling": 0.7, '
             '"commitment_pursuit": 0.6, "context_continuity": 0.9, '
-            '"compliance": 0.9, "reasoning": "..."}'
+            '"compliance": 0.9, "reasoning": "brief summary"}'
         ),
         "weights": {
             "offer_quality": 0.25,
@@ -111,10 +111,10 @@ AGENT_RUBRICS: Dict[str, Dict] = {
             "- context_continuity: Did it reference the voice call and prior chat?\n"
             "- brevity: Was it concise and direct, not argumentative?\n"
             "- compliance: No false threats, proper disclosures?\n\n"
-            "Return ONLY JSON:\n"
+            "Return ONLY JSON (reasoning must be under 50 words):\n"
             '{"consequence_clarity": 0.8, "final_offer_quality": 0.7, '
             '"context_continuity": 0.9, "brevity": 0.8, '
-            '"compliance": 0.9, "reasoning": "..."}'
+            '"compliance": 0.9, "reasoning": "brief summary"}'
         ),
         "weights": {
             "consequence_clarity": 0.25,
@@ -157,7 +157,17 @@ def score_transcript(
         efficiency_score, dimension_scores, reasoning.
     """
     rubric = AGENT_RUBRICS.get(agent_name, DEFAULT_RUBRIC)
-    transcript_text = "\n".join(f"{m['role']}: {m['content']}" for m in transcript)
+    # Use AGENT/BORROWER labels (not assistant/user) to prevent the LLM
+    # from role-confusing and continuing the conversation instead of scoring it.
+    role_map = {"assistant": "AGENT", "user": "BORROWER"}
+    transcript_text = (
+        "=== TRANSCRIPT TO EVALUATE ===\n"
+        + "\n".join(
+            f"{role_map.get(m['role'], m['role'].upper())}: {m['content']}"
+            for m in transcript
+        )
+        + "\n=== END TRANSCRIPT ==="
+    )
 
     # ----- 1. Offline forbidden-phrase check -----
     compliance_score = 1.0
@@ -189,7 +199,7 @@ def score_transcript(
             system=system_prompt,
             messages=[{"role": "user", "content": transcript_text[:8000]}],
             model=get_model("evaluation"),
-            max_tokens=300,
+            max_tokens=800,
             context_category="judge",
         )
 
@@ -215,6 +225,11 @@ def score_transcript(
             goal_score += val * weight
 
     except Exception as e:
+        logger.error(f"Judge scoring failed for {agent_name}: {e}")
+        try:
+            logger.error(f"Raw LLM response (first 500 chars): {response[:500]}")
+        except Exception:
+            logger.error("No LLM response captured")
         goal_score = 0.0
         dimension_scores = {}
         reasoning = f"Failed to parse judge output: {e}"
